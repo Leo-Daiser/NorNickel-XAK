@@ -1,28 +1,30 @@
-# Default-Xak — R&D Knowledge Graph
+# NorNickel-XAK — R&D Knowledge Graph
 
-Проект для хакатона: система для загрузки научно-технических документов, извлечения проверяемых фактов, построения knowledge graph и ответа на исследовательские вопросы.
+Система для хакатона: загрузка научно-технических документов, извлечение проверяемых фактов, построение knowledge graph и ответы на исследовательские вопросы с источниками/evidence.
 
-Система рассчитана на задачи R&D-карты знаний в горно-металлургической и материаловедческой тематике: материалы, процессы, режимы, свойства, числовые параметры, оборудование, источники, лаборатории, эксперты, выводы, противоречия и пробелы в данных.
+Проект рассчитан на R&D-задачи в горно-металлургической и материаловедческой тематике: материалы, процессы, режимы, свойства, числовые параметры, оборудование, источники, выводы, противоречия и пробелы в данных.
 
 ## Что умеет проект
 
-- Загружает PDF, DOCX, PPTX, XLSX, CSV, HTML, TXT, MD.
-- Извлекает сущности и факты из текстов и таблиц.
+- Загружает документы через Streamlit UI.
+- Поддерживает PDF, DOCX, PPTX, XLSX, CSV, HTML, TXT и MD.
+- Парсит документы, режет на chunks и строит локальный каталог.
+- Извлекает факты детерминированным пайплайном.
 - Нормализует материалы, процессы, свойства, единицы измерения и числовые значения.
-- Показывает источники и evidence для фактов.
-- Находит противоречия и пробелы в данных.
+- Показывает источники и evidence для найденных фактов.
+- Находит конфликты и пробелы в данных.
 - Отвечает на вопросы через API `/ask`.
 - Показывает ответ, источники, диагностику и граф в Streamlit UI.
-- Работает в экономичном режиме без LLM и без embeddings.
-- Может использовать Neo4j как графовую БД.
+- Может использовать Neo4j как графовую БД и Qdrant как векторное хранилище.
+- В базовом режиме запускается без внешних LLM API-ключей.
 
-Базовый режим для запуска у новичка — `economy_core`: без внешних API-ключей, без LLM, без dense embeddings. Этого достаточно, чтобы поднять проект, загрузить документы и проверить UI.
+Базовый режим для проверки — `economy_core`: BM25 + deterministic extraction + fallback/graph logic, без внешнего LLM и без локальной embedding-модели. Это самый надежный режим для локального запуска организаторами.
 
 ---
 
-## Быстрый запуск через Docker на Windows
+## Быстрый запуск локально через Docker
 
-### 1. Установить зависимости
+### 1. Требования
 
 Нужно установить:
 
@@ -31,44 +33,33 @@
 
 После установки Docker Desktop должен быть запущен.
 
-Проверь в PowerShell:
+Проверка в PowerShell:
 
 ```powershell
 docker --version
 docker compose version
 ```
 
-Если команды не работают, перезапусти Docker Desktop или компьютер.
-
 ---
 
 ### 2. Скачать проект
 
 ```powershell
-git clone https://github.com/Leo-Daiser/Default-Xak.git
-cd Default-Xak
+git clone https://github.com/Leo-Daiser/NorNickel-XAK.git
+cd NorNickel-XAK
 ```
 
 ---
 
-### 3. Создать локальный `.env`
-
-В репозиторий нельзя коммитить реальные ключи и локальные базы. Поэтому `.env` создается у каждого локально.
-
-Для первого запуска скопируй экономичный профиль:
+### 3. Создать `.env`
 
 ```powershell
-Copy-Item .env.economy.example .env
+Copy-Item .env.example .env
 ```
 
-Этот режим:
+Для первого запуска реальные API-ключи не нужны. Базовый запуск должен работать в локальном `economy_core`-режиме.
 
-- не требует API-ключей;
-- не использует LLM;
-- не использует embeddings;
-- работает через BM25 + deterministic extraction + graph/fallback logic.
-
-Проверь, что файл появился:
+Проверить, что `.env` создан:
 
 ```powershell
 dir .env
@@ -76,13 +67,13 @@ dir .env
 
 ---
 
-### 4. Собрать и запустить контейнеры
+### 4. Запустить проект
 
 ```powershell
 docker compose --profile full up -d --build
 ```
 
-Первый запуск может занять несколько минут.
+Первый запуск может занять несколько минут: Docker соберет API/UI-образ и поднимет Neo4j + Qdrant.
 
 Проверить контейнеры:
 
@@ -90,7 +81,7 @@ docker compose --profile full up -d --build
 docker compose ps
 ```
 
-Ожидаемо должны быть контейнеры:
+Ожидаемые сервисы:
 
 ```text
 api
@@ -99,19 +90,37 @@ neo4j
 qdrant
 ```
 
-Главные адреса:
+Основные адреса:
 
 ```text
 Streamlit UI:  http://localhost:8501
 API docs:      http://localhost:8000/docs
 API health:    http://localhost:8000/health
 Neo4j Browser: http://localhost:7474
+Qdrant API:    http://localhost:6333
 ```
 
-Проверка API из PowerShell:
+Neo4j Browser:
+
+```text
+login:    neo4j
+password: hackathon_password
+```
+
+---
+
+### 5. Проверить запуск
+
+API health:
 
 ```powershell
 Invoke-RestMethod http://localhost:8000/health
+```
+
+UI health:
+
+```powershell
+Invoke-WebRequest http://localhost:8501/_stcore/health
 ```
 
 Открыть UI:
@@ -122,17 +131,69 @@ Start-Process http://localhost:8501
 
 ---
 
-## Как пользоваться UI
+## Данные
 
-1. Открой `http://localhost:8501`.
-2. В блоке загрузки документов выбери файлы.
-3. Для быстрого теста можно взять файлы из папки проекта `evaluation/test_corpus`.
-4. Нажми загрузку документов.
-5. После загрузки нажми обновление графа/индексов в UI.
-6. Задай вопрос в поле вопроса.
-7. Посмотри ответ, источники, факты, диагностику и граф.
+Исходный датасет хакатона **не включен** в репозиторий.
 
-Примеры вопросов:
+Для локального запуска с полным корпусом организаторы должны распаковать выданный датасет в папку:
+
+```text
+data_storage/
+```
+
+Ожидаемая структура:
+
+```text
+data_storage/
+  Доклады/
+  Журналы/
+  Материалы конференций/
+  Обзоры/
+  Статьи/
+```
+
+Папка `data_storage/` намеренно исключена из Git, потому что содержит исходные данные хакатона.
+
+Для быстрого теста без приватного датасета можно использовать тестовые документы из:
+
+```text
+evaluation/test_corpus/
+```
+
+---
+
+## Как загрузить документы
+
+### Вариант A — через UI
+
+1. Открыть `http://localhost:8501`.
+2. Загрузить документы через блок загрузки файлов.
+3. После загрузки обновить граф/индексы в UI.
+4. Задать вопрос в поле вопроса.
+5. Проверить ответ, источники, evidence, диагностику и граф.
+
+### Вариант B — загрузить часть реального корпуса скриптом
+
+После запуска Docker можно загрузить выборку из `data_storage/` через API:
+
+```powershell
+python -m pip install requests
+python scripts/stage_real_corpus_demo.py --input data_storage --count 25 --reset --sync-neo4j
+```
+
+Скрипт загружает файлы по одному, обновляет граф после загрузки и сохраняет отчет в `artifacts/`.
+
+Для предварительной проверки без загрузки:
+
+```powershell
+python scripts/stage_real_corpus_demo.py --input data_storage --count 25 --dry-run
+```
+
+---
+
+## Примеры вопросов для UI
+
+Для тестового корпуса:
 
 ```text
 Что делали по сплаву ВТ6 при отжиге и какой был эффект на прочность?
@@ -142,18 +203,21 @@ Start-Process http://localhost:8501
 Найди evidence по прочности 7075-T6 после aging.
 ```
 
-Для полного ТЗ также проверяются вопросы вида:
+Для полного корпуса хакатона:
 
 ```text
+Какие материалы, процессы и свойства встречаются в загруженных источниках?
 Какие методы обессоливания воды подходят при сульфатах и хлоридах 200–300 мг/л?
-Какие решения циркуляции католита при электроэкстракции никеля описаны в мировой практике?
-Покажи эксперименты по распределению Au, Ag и МПГ между штейном и шлаком за последние 5 лет.
+Какие решения циркуляции католита при электроэкстракции никеля описаны в источниках?
+Покажи эксперименты по распределению Au, Ag и МПГ между штейном и шлаком.
 Какие способы закачки шахтных вод применялись в России и за рубежом?
+Какие пробелы в данных найдены в активном корпусе?
+Есть ли противоречия или неоднородные данные по численным параметрам?
 ```
 
 ---
 
-## Важные команды Docker
+## Полезные команды Docker
 
 Остановить проект:
 
@@ -191,36 +255,25 @@ docker compose logs ui --tail=100
 docker compose logs neo4j --tail=100
 ```
 
-Полностью сбросить контейнеры и локальные volumes:
+Сбросить контейнеры и локальные runtime-данные:
 
 ```powershell
 docker compose down -v
+Remove-Item -Recurse -Force data, volumes, artifacts -ErrorAction SilentlyContinue
 docker compose --profile full up -d --build
 ```
 
 ---
 
-## Проверки после запуска
+## Проверки внутри контейнера
 
-Проверить API:
-
-```powershell
-Invoke-RestMethod http://localhost:8000/health
-```
-
-Проверить UI:
+Быстрые API/UI smoke-тесты:
 
 ```powershell
-Invoke-WebRequest http://localhost:8501/_stcore/health
+docker compose exec api python -m pytest -q tests/test_api_ask.py tests/test_document_management_api.py tests/test_upload_and_refresh_flow.py tests/test_streamlit_preset_mapping.py tests/test_streamlit_no_nested_expanders.py
 ```
 
-Ожидаемый ответ UI health:
-
-```text
-ok
-```
-
-Проверить ключевые eval внутри контейнера API:
+Ключевые eval-проверки:
 
 ```powershell
 docker compose exec api python evaluation/eval_ui_product.py
@@ -229,25 +282,19 @@ docker compose exec api python evaluation/eval_answer_quality.py
 docker compose exec api python evaluation/eval_tz_query_readiness.py
 ```
 
-Запустить быстрые UI/API тесты:
-
-```powershell
-docker compose exec api python -m pytest -q tests/test_streamlit_preset_mapping.py tests/test_streamlit_no_nested_expanders.py tests/test_upload_and_refresh_flow.py tests/test_document_management_api.py tests/test_api_ask.py
-```
-
 ---
 
 ## Если что-то не работает
 
-### Docker пишет, что `.env` не найден
+### `.env` не найден
 
-Создай `.env`:
+Создать `.env`:
 
 ```powershell
-Copy-Item .env.economy.example .env
+Copy-Item .env.example .env
 ```
 
-Потом снова запусти:
+Потом перезапустить:
 
 ```powershell
 docker compose --profile full up -d --build
@@ -260,7 +307,7 @@ docker compose ps
 docker compose logs ui --tail=100
 ```
 
-Проверь, что API доступен из UI-контейнера:
+Проверить, что UI-контейнер видит API:
 
 ```powershell
 docker compose exec ui python -c "import urllib.request; print(urllib.request.urlopen('http://api:8000/health').read().decode()[:500])"
@@ -271,11 +318,6 @@ docker compose exec ui python -c "import urllib.request; print(urllib.request.ur
 ```powershell
 docker compose ps
 docker compose logs api --tail=100
-```
-
-Проверь health:
-
-```powershell
 Invoke-RestMethod http://localhost:8000/health
 ```
 
@@ -283,18 +325,19 @@ Invoke-RestMethod http://localhost:8000/health
 
 Для первого запуска это не критично: проект умеет работать через fallback.
 
-Проверить подключение из API-контейнера:
+Проверка подключения из API-контейнера:
 
 ```powershell
 docker compose exec api python scripts/check_neo4j_connection.py
 ```
 
-Если Neo4j нужен явно, проверь `.env`:
+Параметры локального Neo4j в `.env`:
 
 ```env
 NEO4J_DOCKER_URI=bolt://neo4j:7687
+NEO4J_URI=bolt://neo4j:7687
 NEO4J_USER=neo4j
-NEO4J_PASSWORD=password
+NEO4J_PASSWORD=hackathon_password
 NEO4J_DATABASE=neo4j
 ```
 
@@ -310,76 +353,41 @@ NEO4J_DATABASE=neo4j
 
 ### economy_core
 
-Режим по умолчанию для первого запуска.
+Режим для первого запуска и локальной проверки:
 
 ```text
-без LLM
-без embeddings
+без внешнего LLM
+без локальных dense embeddings
 BM25 retrieval
 deterministic extraction
-template answer
-```
-
-Используется файл:
-
-```text
-.env.economy.example
+template/fallback answer
 ```
 
 ### balanced_hybrid
 
-Локальный hybrid retrieval с MiniLM embeddings.
+Гибридный retrieval с локальными embeddings. Требует больше ресурсов и локальную модель в `models/` или доступную загрузку модели.
 
-```powershell
-Copy-Item .env.balanced.example .env
-docker compose --profile full up -d --build
-```
-
-Если `sentence-transformers` или модель недоступны, система не падает: retrieval деградирует в BM25, а причина отображается в `/health`.
-
-### quality_full
-
-Режим с hybrid retrieval и LLM polish. Требует API-ключ Mistral или другого совместимого provider.
-
-```powershell
-Copy-Item .env.quality.example .env
-notepad .env
-```
-
-В `.env` нужно вручную добавить ключ. Реальные ключи нельзя коммитить.
-
----
-
-## Как подключить Mistral опционально
-
-Для первого запуска это не нужно.
-
-Если нужен LLM polish:
+В `.env`:
 
 ```env
-RUNTIME_PROFILE=economy_guarded_llm
-ENABLE_LLM=true
-LLM_PROVIDER=mistral
-MISTRAL_API_KEY=...
-MISTRAL_BASE_URL=https://api.mistral.ai/v1
-MISTRAL_MODEL=mistral-small-latest
+RUNTIME_PROFILE=balanced_hybrid
 ```
 
-Перезапуск:
+После изменения:
 
 ```powershell
-docker compose down
 docker compose --profile full up -d --build
 ```
 
-Проверка:
+Если embeddings недоступны, система должна деградировать в BM25/fallback, а причина будет видна в `/health`.
 
-```powershell
-docker compose exec api python scripts/check_mistral_connection.py
-Invoke-RestMethod http://localhost:8000/health
-```
+### economy_guarded_llm / quality_full
 
-Важно: LLM не является источником истины. В базовой архитектуре факты извлекаются и проверяются отдельно, а LLM используется только как опциональный слой формулировки ответа.
+Опциональные режимы с LLM polish. Для локального запуска организаторам они не обязательны.
+
+Пример для Mistral/OpenRouter указывается в `.env.example`. Реальные ключи нельзя коммитить.
+
+Важно: LLM не является источником истины. Факты извлекаются и проверяются отдельно, а LLM используется только как опциональный слой формулировки ответа.
 
 ---
 
@@ -394,19 +402,27 @@ scripts/      служебные скрипты
 requirements*.txt  зависимости для разных режимов
 ```
 
+Runtime-папки, которые создаются локально и не хранятся в Git:
+
+```text
+data/
+artifacts/
+volumes/
+models/
+data_storage/
+```
+
 ---
 
 ## Что нельзя коммитить
 
-Не добавлять в репозиторий локальные runtime-файлы:
-
 ```text
 .env
-data/
 data_storage/
+data/
 volumes/
-dist/
 artifacts/
+models/
 __pycache__/
 *.pyc
 *.sqlite3
@@ -414,19 +430,11 @@ __pycache__/
 *.zip
 ```
 
-Перед коммитом проверяй:
+Проверка перед коммитом:
 
 ```powershell
 git status --short
 git diff --cached --name-only
-```
-
-Если случайно добавил тяжелую папку:
-
-```powershell
-git restore --staged data_storage/
-git restore --staged data/
-git restore --staged artifacts/
 ```
 
 ---
