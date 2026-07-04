@@ -1,416 +1,334 @@
-# Credit Risk Scoring Service
+# SciKnot — Scientific GraphRAG для технических документов
 
-Production-like ML system for credit default risk scoring based on the **Home Credit Default Risk** dataset.
+Проект для хакатона: система загружает научно-технические документы, извлекает проверяемые факты, строит граф знаний и отвечает на исследовательские вопросы с источниками, цитатами и аудитом происхождения ответа.
 
-Проект строится не как один ноутбук с моделью, а как инженерная ML-система с:
-- модульным `src/`
-- конфигами
-- PostgreSQL
-- FastAPI
-- Docker Compose
-- CLI-командами
-- тестами
-- воспроизводимой загрузкой и валидацией сырых данных
+Основной интерфейс — Streamlit UI. Backend — FastAPI. Граф — Neo4j. Поиск — BM25 / hybrid retrieval. LLM-провайдер можно подключить через Yandex Cloud AI.
 
 ---
 
-## Current status
+## 1. Что нужно установить
 
-Сейчас реализованы:
+Перед запуском установите:
 
-### Phase 0 — Foundation Layer
-- базовая структура репозитория
-- FastAPI сервис
-- health endpoint
-- PostgreSQL
-- SQLAlchemy ORM models
-- Docker / Docker Compose
-- CLI для инициализации БД
-- базовые тесты
+- Git;
+- Docker Desktop;
+- Docker Compose v2.
 
-### Phase 1 — Raw Data Layer
-- конфиг данных через `configs/data.yaml`
-- загрузка сырых CSV
-- валидация схемы таблиц
-- проверка обязательных колонок
-- проверка пустых таблиц
-- проверка уникальных ключей
-- проверка foreign key relationships
-- data quality diagnostics для реального датасета
-- unit-тесты на raw data contracts
+Проверьте установку:
 
-### In progress
-- Base Feature Layer
-- application-level feature engineering
-- построение feature dataset для train/test
-- model training pipeline
+```powershell
+docker --version
+docker compose version
+```
+
+Для нормального запуска желательно иметь не меньше 4–8 GB свободной RAM.
 
 ---
 
-## Project goal
+## 2. Скачать проект
 
-Построить сервис скоринга кредитного риска, который на вход принимает данные клиента, а на выходе возвращает:
-- вероятность дефолта
-- risk band
-- reason codes / explainability fields
-- версию модели
-- логирование результатов в БД
-
----
-
-## Dataset
-
-Используется датасет **Home Credit Default Risk**.
-
-На текущем этапе задействованы:
-- `application_train.csv`
-- `application_test.csv`
-- `bureau.csv`
-- `bureau_balance.csv`
-
-Ожидаемая структура данных:
-
-```text
-/data/
-└── raw/
-    └── home_credit/
-        ├── application_train.csv
-        ├── application_test.csv
-        ├── bureau.csv
-        ├── bureau_balance.csv
+```powershell
+git clone https://github.com/Leo-Daiser/NorNickel-XAK.git
+cd NorNickel-XAK
 ```
 
 ---
 
-## Project structure
+## 3. Создать `.env` и runtime-папки
 
-```text
-credit-risk-scoring/
-├── src/
-│   ├── api/
-│   │   ├── main.py
-│   │   ├── routes.py
-│   │   └── schemas.py
-│   ├── core/
-│   │   ├── config.py
-│   │   └── logger.py
-│   ├── data/
-│   │   ├── load_raw.py
-│   │   └── validate_schema.py
-│   ├── db/
-│   │   ├── base.py
-│   │   ├── models.py
-│   │   ├── session.py
-│   │   └── init_db.py
-│   ├── features/
-│   │   └── __init__.py
-│   ├── models/
-│   │   └── __init__.py
-│   ├── services/
-│   │   └── health.py
-│   ├── utils/
-│   │   └── paths.py
-│   └── cli.py
-├── configs/
-│   ├── app.yaml
-│   ├── db.yaml
-│   ├── train.yaml
-│   └── data.yaml
-├── data/
-│   ├── raw/
-│   ├── interim/
-│   └── processed/
-├── notebooks/
-├── sql/
-│   └── init.sql
-├── tests/
-│   ├── conftest.py
-│   ├── test_config.py
-│   ├── test_health.py
-│   ├── test_load_raw.py
-│   └── test_validate_schema.py
-├── artifacts/
-│   ├── models/
-│   ├── metrics/
-│   └── reports/
-├── Dockerfile
-├── docker-compose.yml
-├── Makefile
-├── requirements.txt
-└── README.md
+Сначала создайте `.env` из примера:
+
+```powershell
+Copy-Item .env.example .env -Force
 ```
 
----
+Создайте локальные папки, которые не хранятся в Git:
 
-## Tech stack
-
-- Python 3.11
-- FastAPI
-- Uvicorn
-- PostgreSQL
-- SQLAlchemy
-- Pydantic
-- pandas
-- PyYAML
-- pytest
-- Docker
-- Docker Compose
-
----
-
-## Implemented functionality
-
-### API
-- `GET /health` — healthcheck endpoint
-
-### Database
-Сейчас в PostgreSQL заложены таблицы:
-- `model_registry`
-- `scoring_requests`
-- `scoring_predictions`
-- `feature_stats`
-
-### CLI
-Поддерживаются команды:
-- `python -m src.cli init-db`
-- `python -m src.cli validate-raw`
-
-### Raw data validation
-Проверяется:
-- наличие файлов
-- наличие обязательных колонок
-- пустые таблицы
-- уникальность ключей
-- связь `bureau_balance.SK_ID_BUREAU -> bureau.SK_ID_BUREAU`
-
----
-
-## Important note about raw data validation
-
-На реальном датасете Home Credit обнаруживается data quality anomaly:
-
-- в `bureau_balance` есть значения `SK_ID_BUREAU`, которых нет в `bureau`
-
-Поэтому raw validation работает в двух режимах:
-
-- **strict mode** — для unit-тестов, нарушение FK считается ошибкой
-- **report mode** — для CLI на реальных данных, нарушение логируется в отчёт, но не валит весь пайплайн
-
-Это сделано намеренно: проверка остаётся, но проект не ломается из-за особенностей исходного датасета.
-
----
-
-## Installation
-
-### 1. Clone repository
-
-```bash
-git clone https://github.com/Leo-Daiser/Credit-Risk-Scoring-Service.git
-cd Credit-Risk-Scoring-Service
+```powershell
+New-Item -ItemType Directory -Force data, artifacts, models, data_storage, volumes, volumes\neo4j, volumes\qdrant | Out-Null
 ```
 
-### 2. Create `.env`
+Эти папки нужны для runtime-данных, кэшей, загружаемых документов и volume-данных сервисов.
 
-Пример:
+---
+
+## 4. Как подключить Yandex Cloud AI
+
+Откройте файл `.env`:
+
+```powershell
+notepad .env
+```
+
+Добавьте или замените в нём блок LLM-настроек:
 
 ```env
-POSTGRES_USER=credit_user
-POSTGRES_PASSWORD=credit_pass
-POSTGRES_DB=credit_risk
-POSTGRES_HOST=db
-POSTGRES_PORT=5432
-
-APP_HOST=0.0.0.0
-APP_PORT=8000
-APP_NAME=Credit Risk Scoring Service
-APP_ENV=dev
+LLM_PROVIDER=yandex
+YANDEX_API_KEY=ВАШ_SECRET_KEY_ОТ_YANDEX_CLOUD_AI
+YC_API_KEY=ВАШ_SECRET_KEY_ОТ_YANDEX_CLOUD_AI
+YANDEX_FOLDER_ID=ВАШ_FOLDER_ID
+YANDEX_BASE_URL=https://ai.api.cloud.yandex.net/v1
+YANDEX_MODEL_URI=gpt://ВАШ_FOLDER_ID/yandexgpt-5.1
 ```
 
-### 3. Install dependencies locally
+Пример, как должна выглядеть строка `YANDEX_MODEL_URI`:
 
-```bash
-pip install -r requirements.txt
+```env
+YANDEX_MODEL_URI=gpt://b1xxxxxxxxxxxxxxxxx/yandexgpt-5.1
 ```
 
----
+Где взять значения:
 
-## Run with Docker Compose
+- `YANDEX_API_KEY` / `YC_API_KEY` — secret key API-ключа сервисного аккаунта Yandex Cloud AI;
+- `YANDEX_FOLDER_ID` — ID каталога Yandex Cloud;
+- `YANDEX_MODEL_URI` — URI модели, где вместо `ВАШ_FOLDER_ID` указан ваш реальный folder id.
 
-```bash
-docker compose up --build
+Важно:
+
+- не коммитьте `.env` в Git;
+- не отправляйте API-ключ в чат или публичный репозиторий;
+- если ключ случайно попал в публичное место, удалите его в Yandex Cloud и создайте новый.
+
+Проверить, что `.env` игнорируется Git:
+
+```powershell
+git check-ignore -v .env
 ```
 
-После запуска:
-- API: `http://localhost:8000`
-- Healthcheck: `http://localhost:8000/health`
+Если команда ничего не вывела, добавьте `.env` в `.gitignore`:
 
----
-
-## Local development
-
-### Run API locally
-
-```bash
-uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### Initialize database
-
-```bash
-python -m src.cli init-db
-```
-
-### Validate raw data
-
-```bash
-python -m src.cli validate-raw
+```powershell
+Add-Content .gitignore "`n.env"
 ```
 
 ---
 
-## Tests
+## 5. Запуск проекта
 
-Запуск всех тестов:
+Запустите полный стек:
 
-```bash
-pytest -q
+```powershell
+docker compose --env-file .env --profile full up -d --build
 ```
 
-Тесты покрывают:
-- config loading
-- health endpoint
-- raw data config loading
-- table path resolution
-- raw CSV loading
-- required columns validation
-- empty table detection
-- unique key validation
-- foreign key validation
-- end-to-end raw schema validation on synthetic mini-tables
+Первый build может идти **10–15 минут**. Это нормально: Docker собирает образы и устанавливает зависимости.
 
----
+Проверить статус контейнеров:
 
-## API
+```powershell
+docker compose --profile full ps -a
+```
 
-### `GET /health`
+После успешного запуска откройте:
 
-Response example:
+```text
+Streamlit UI:  http://localhost:8501
+API docs:      http://localhost:8000/docs
+API health:    http://localhost:8000/health
+Neo4j Browser: http://localhost:7474
+```
 
-```json
-{
-  "status": "ok",
-  "service": "credit-risk-scoring"
-}
+Neo4j Browser:
+
+```text
+login:    neo4j
+password: hackathon_password
 ```
 
 ---
 
-## Configuration
+## 6. Проверка запуска
 
-Основные конфиги лежат в `configs/`.
+Проверьте API:
 
-### `configs/data.yaml`
-Описывает:
-- директорию с raw data
-- список используемых таблиц
-- обязательные колонки
-- unique keys
+```powershell
+Invoke-RestMethod http://localhost:8000/health
+```
 
----
+Проверьте UI:
 
-## Database schema
+```powershell
+Invoke-WebRequest http://localhost:8501/_stcore/health
+Start-Process http://localhost:8501
+```
 
-### `model_registry`
-Хранение версий моделей:
-- model version
-- model type
-- artifact path
-- metrics
+В UI вверху должно быть видно примерно:
 
-### `scoring_requests`
-Логирование входящих inference requests.
+```text
+API: ok
+Neo4j: подключен
+LLM: готов
+```
 
-### `scoring_predictions`
-Хранение результатов скоринга.
-
-### `feature_stats`
-Статистики признаков для мониторинга и контроля качества.
+Если `LLM: готов` не появился, проверьте значения `LLM_PROVIDER`, `YANDEX_API_KEY`, `YANDEX_FOLDER_ID` и `YANDEX_MODEL_URI` в `.env`.
 
 ---
 
-## Development roadmap
+## 7. Как загрузить документы
 
-### Phase 2 — Base Feature Layer
-- application-level cleaning
-- derived features from application tables
-- train/test feature alignment
-- save processed datasets
+Откройте UI:
 
-### Phase 3 — Historical Aggregation Layer
-- bureau aggregations
-- bureau_balance aggregations
-- merge historical features to applicant level
+```text
+http://localhost:8501
+```
 
-### Phase 4 — Modeling Layer
-- Logistic Regression baseline
-- CatBoost challenger
-- offline evaluation
-- artifact saving
+Дальше:
 
-### Phase 5 — Explainability and business layer
-- calibration
-- threshold tuning
-- SHAP report
-- business metrics
+1. Перейдите к блоку загрузки документов.
+2. Загрузите PDF, DOCX, TXT, MD, HTML, XLSX, CSV или PPTX.
+3. Дождитесь обработки.
+4. При необходимости нажмите обновление графа / active corpus в UI.
+5. Задайте исследовательский вопрос.
 
-### Phase 6 — Serving layer
-- `POST /score`
-- `GET /model_info`
-- inference logging
-- model versioning
+Если у вас есть полный корпус организаторов, распакуйте его в папку:
 
-### Phase 7+
-- batch scoring
-- drift monitoring
-- advanced feature pipelines
-- champion / challenger logic
+```text
+data_storage/
+```
+
+Папка `data_storage/` не хранится в Git, потому что может содержать исходные данные хакатона.
 
 ---
 
-## Engineering principles
+## 8. Быстрые вопросы для проверки
 
-Этот проект строится с упором на:
-- reproducibility
-- modular code
-- explicit data contracts
-- separation between notebooks and production code
-- testable preprocessing logic
-- production-minded ML development
+Для демонстрации в режиме **Лучший ответ** можно использовать:
 
----
+```text
+Какие технологические решения электроэкстракции никеля описаны?
+```
 
-## What is intentionally not done yet
+```text
+Что известно об электроэкстракции никеля из сульфатных или хлоридных растворов?
+```
 
-На текущем этапе **ещё не реализованы**:
-- feature engineering из historical tables
-- train/validation split
-- training pipeline
-- model serving for `/score`
-- explainability output
-- drift monitoring
-- batch inference
+Дополнительные вопросы:
 
-Это будет добавляться по фазам.
+```text
+Какие способы охлаждения применяются для глубоких рудников?
+Какие основные источники тепла возникают в глубоких подземных рудниках?
+Какие пробелы в данных найдены в активном корпусе?
+Есть ли противоречия или неоднородные данные по численным параметрам?
+```
 
 ---
 
-## Author
+## 9. Режимы работы в UI
 
-**Leo Daiser**  
-GitHub: [Leo-Daiser](https://github.com/Leo-Daiser)
+### Лучший ответ
+
+Основной режим для демонстрации. Система сначала пытается найти подтверждённые факты в графе. Если точных structured facts недостаточно, она может показать навигационный ответ по найденным источникам и evidence-фрагментам.
+
+### Строгая проверка
+
+Аудиторский режим. Он не должен подмешивать частично релевантные chunks как основной verified-ответ. Если точных `AcceptedFact` нет, система честно показывает, что exact-подтверждение не найдено.
+
+### Офлайн-режим
+
+Режим без внешнего LLM. Подходит для проверки базового retrieval, графа, загрузки документов и deterministic fallback-ответов.
 
 ---
 
-## License
+## 10. PDF-отчёт
 
-Проект создаётся в учебно-прикладных целях.
+В UI можно выгрузить ответ в PDF. Отчёт содержит:
+
+- вопрос;
+- краткий вывод;
+- найденные факты или частично релевантные результаты;
+- ограничения анализа;
+- использованные источники и цитаты;
+- служебную информацию по графу.
+
+PDF формируется с поддержкой русской кириллицы.
+
+---
+
+## 11. Остановить проект
+
+```powershell
+docker compose --profile full down
+```
+
+Перезапустить без пересборки:
+
+```powershell
+docker compose --env-file .env --profile full up -d
+```
+
+Полностью пересобрать:
+
+```powershell
+docker compose --env-file .env --profile full up -d --build
+```
+
+Посмотреть логи:
+
+```powershell
+docker compose --profile full logs api --tail=100
+docker compose --profile full logs ui --tail=100
+docker compose --profile full logs neo4j --tail=100
+```
+
+---
+
+## 12. Если что-то не запустилось
+
+Проверьте контейнеры:
+
+```powershell
+docker compose --profile full ps -a
+```
+
+Посмотрите логи:
+
+```powershell
+docker compose --profile full logs --tail=200 api ui neo4j qdrant
+```
+
+Проверьте, что созданы runtime-папки:
+
+```powershell
+Test-Path .env
+Test-Path data
+Test-Path artifacts
+Test-Path models
+Test-Path data_storage
+Test-Path volumes\neo4j
+Test-Path volumes\qdrant
+```
+
+Если чего-то нет, создайте заново:
+
+```powershell
+Copy-Item .env.example .env -Force
+New-Item -ItemType Directory -Force data, artifacts, models, data_storage, volumes, volumes\neo4j, volumes\qdrant | Out-Null
+```
+
+Потом снова запустите:
+
+```powershell
+docker compose --env-file .env --profile full up -d --build
+```
+
+---
+
+## 13. Главные идеи проекта
+
+Проект сделан как проверяемая GraphRAG-система для R&D-документов.
+
+Ключевая идея — не просто генерировать текстовый ответ, а связывать ответ с документами, источниками, evidence и графом знаний.
+
+Что делает система:
+
+- принимает технические документы разных форматов;
+- разбивает документы на chunks;
+- извлекает структурированные факты;
+- связывает факты с источниками и цитатами;
+- строит knowledge graph в Neo4j;
+- ищет релевантные документы и факты по исследовательскому вопросу;
+- отделяет подтверждённые `AcceptedFact` от навигационных evidence-фрагментов;
+- показывает аудит происхождения ответа;
+- формирует PDF-отчёт для эксперта.
+
+Главное отличие от обычного чат-бота: система показывает, откуда взят ответ, какие источники использовались и является ли вывод строго подтверждённым фактом или только навигационным результатом по найденным фрагментам.
