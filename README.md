@@ -4,21 +4,21 @@
 
 Проект рассчитан на R&D-задачи в горно-металлургической и материаловедческой тематике: материалы, процессы, режимы, свойства, числовые параметры, оборудование, источники, выводы, противоречия и пробелы в данных.
 
-## Что умеет проект
+## Возможности
 
-- Загружает документы через Streamlit UI.
-- Поддерживает PDF, DOCX, PPTX, XLSX, CSV, HTML, TXT и MD.
-- Парсит документы, режет на chunks и строит локальный каталог.
-- Извлекает факты детерминированным пайплайном.
-- Нормализует материалы, процессы, свойства, единицы измерения и числовые значения.
-- Показывает источники и evidence для найденных фактов.
-- Находит конфликты и пробелы в данных.
-- Отвечает на вопросы через API `/ask`.
-- Показывает ответ, источники, диагностику и граф в Streamlit UI.
-- Может использовать Neo4j как графовую БД и Qdrant как векторное хранилище.
-- В базовом режиме запускается без внешних LLM API-ключей.
+- Streamlit UI для загрузки документов и вопросов.
+- FastAPI backend с endpoint `/ask`.
+- Поддержка PDF, DOCX, PPTX, XLSX, CSV, HTML, TXT, MD.
+- Parsing/chunking документов и локальный каталог.
+- Детерминированное извлечение фактов.
+- Нормализация материалов, процессов, свойств, единиц и числовых значений.
+- Evidence/sources для найденных фактов.
+- Поиск противоречий и пробелов.
+- Опциональный Neo4j graph backend.
+- Опциональный Qdrant/vector backend.
+- Базовый режим без внешних LLM API-ключей.
 
-Базовый режим для проверки — `economy_core`: BM25 + deterministic extraction + fallback/graph logic, без внешнего LLM и без локальной embedding-модели. Это самый надежный режим для локального запуска организаторами.
+Базовый режим для проверки — `economy_core`: BM25 + deterministic extraction + fallback/graph logic, без внешнего LLM и без локальной embedding-модели.
 
 ---
 
@@ -31,16 +31,12 @@
 - Git;
 - Docker Desktop.
 
-После установки Docker Desktop должен быть запущен.
-
-Проверка в PowerShell:
+Проверка:
 
 ```powershell
 docker --version
 docker compose version
 ```
-
----
 
 ### 2. Скачать проект
 
@@ -49,31 +45,21 @@ git clone https://github.com/Leo-Daiser/NorNickel-XAK.git
 cd NorNickel-XAK
 ```
 
----
-
 ### 3. Создать `.env`
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Для первого запуска реальные API-ключи не нужны. Базовый запуск должен работать в локальном `economy_core`-режиме.
+Для первого запуска реальные API-ключи не нужны. Базовый запуск работает локально.
 
-Проверить, что `.env` создан:
-
-```powershell
-dir .env
-```
-
----
-
-### 4. Запустить проект
+### 4. Запустить сервисы
 
 ```powershell
 docker compose --profile full up -d --build
 ```
 
-Первый запуск может занять несколько минут: Docker соберет API/UI-образ и поднимет Neo4j + Qdrant.
+Первый запуск может занять несколько минут.
 
 Проверить контейнеры:
 
@@ -90,7 +76,7 @@ neo4j
 qdrant
 ```
 
-Основные адреса:
+Адреса:
 
 ```text
 Streamlit UI:  http://localhost:8501
@@ -107,25 +93,11 @@ login:    neo4j
 password: hackathon_password
 ```
 
----
-
 ### 5. Проверить запуск
-
-API health:
 
 ```powershell
 Invoke-RestMethod http://localhost:8000/health
-```
-
-UI health:
-
-```powershell
 Invoke-WebRequest http://localhost:8501/_stcore/health
-```
-
-Открыть UI:
-
-```powershell
 Start-Process http://localhost:8501
 ```
 
@@ -135,7 +107,7 @@ Start-Process http://localhost:8501
 
 Исходный датасет хакатона **не включен** в репозиторий.
 
-Для локального запуска с полным корпусом организаторы должны распаковать выданный датасет в папку:
+Для локального запуска с полным корпусом нужно распаковать выданный датасет в папку:
 
 ```text
 data_storage/
@@ -169,7 +141,7 @@ evaluation/test_corpus/
 1. Открыть `http://localhost:8501`.
 2. Загрузить документы через блок загрузки файлов.
 3. После загрузки обновить граф/индексы в UI.
-4. Задать вопрос в поле вопроса.
+4. Задать вопрос.
 5. Проверить ответ, источники, evidence, диагностику и граф.
 
 ### Вариант B — загрузить часть реального корпуса скриптом
@@ -181,17 +153,17 @@ python -m pip install requests
 python scripts/stage_real_corpus_demo.py --input data_storage --count 25 --reset --sync-neo4j
 ```
 
-Скрипт загружает файлы по одному, обновляет граф после загрузки и сохраняет отчет в `artifacts/`.
-
-Для предварительной проверки без загрузки:
+Dry-run без загрузки:
 
 ```powershell
 python scripts/stage_real_corpus_demo.py --input data_storage --count 25 --dry-run
 ```
 
+Скрипт загружает файлы по одному, обновляет граф после загрузки и сохраняет отчет в `artifacts/`.
+
 ---
 
-## Примеры вопросов для UI
+## Примеры вопросов
 
 Для тестового корпуса:
 
@@ -217,7 +189,7 @@ python scripts/stage_real_corpus_demo.py --input data_storage --count 25 --dry-r
 
 ---
 
-## Полезные команды Docker
+## Полезные команды
 
 Остановить проект:
 
@@ -237,21 +209,11 @@ docker compose --profile full up -d
 docker compose --profile full up -d --build
 ```
 
-Посмотреть логи API:
+Логи:
 
 ```powershell
 docker compose logs api --tail=100
-```
-
-Посмотреть логи UI:
-
-```powershell
 docker compose logs ui --tail=100
-```
-
-Посмотреть логи Neo4j:
-
-```powershell
 docker compose logs neo4j --tail=100
 ```
 
@@ -284,19 +246,12 @@ docker compose exec api python evaluation/eval_tz_query_readiness.py
 
 ---
 
-## Если что-то не работает
+## Troubleshooting
 
 ### `.env` не найден
 
-Создать `.env`:
-
 ```powershell
 Copy-Item .env.example .env
-```
-
-Потом перезапустить:
-
-```powershell
 docker compose --profile full up -d --build
 ```
 
@@ -305,11 +260,6 @@ docker compose --profile full up -d --build
 ```powershell
 docker compose ps
 docker compose logs ui --tail=100
-```
-
-Проверить, что UI-контейнер видит API:
-
-```powershell
 docker compose exec ui python -c "import urllib.request; print(urllib.request.urlopen('http://api:8000/health').read().decode()[:500])"
 ```
 
@@ -325,15 +275,15 @@ Invoke-RestMethod http://localhost:8000/health
 
 Для первого запуска это не критично: проект умеет работать через fallback.
 
-Проверка подключения из API-контейнера:
+Проверка:
 
 ```powershell
 docker compose exec api python scripts/check_neo4j_connection.py
 ```
 
-Параметры локального Neo4j в `.env`:
+Параметры локального Neo4j:
 
-```env
+```text
 NEO4J_DOCKER_URI=bolt://neo4j:7687
 NEO4J_URI=bolt://neo4j:7687
 NEO4J_USER=neo4j
@@ -343,9 +293,7 @@ NEO4J_DATABASE=neo4j
 
 ### Загрузка файлов идет долго
 
-Это нормально для больших PDF, DOCX и XLSX. UI загружает файлы по одному, чтобы один тяжелый или битый файл не ронял весь batch.
-
-Если файл является сканом без текстового слоя, ожидаемый статус — `ocr_required`. Это не crash, а честная диагностика: нужен OCR-профиль.
+Это нормально для больших PDF, DOCX и XLSX. Если файл является сканом без текстового слоя, ожидаемый статус — `ocr_required`; это не crash, а диагностика необходимости OCR-профиля.
 
 ---
 
@@ -369,7 +317,7 @@ template/fallback answer
 
 В `.env`:
 
-```env
+```text
 RUNTIME_PROFILE=balanced_hybrid
 ```
 
@@ -383,9 +331,7 @@ docker compose --profile full up -d --build
 
 ### economy_guarded_llm / quality_full
 
-Опциональные режимы с LLM polish. Для локального запуска организаторам они не обязательны.
-
-Пример для Mistral/OpenRouter указывается в `.env.example`. Реальные ключи нельзя коммитить.
+Опциональные режимы с LLM polish. Для локального запуска организаторам они не обязательны. Реальные ключи нельзя коммитить.
 
 Важно: LLM не является источником истины. Факты извлекаются и проверяются отдельно, а LLM используется только как опциональный слой формулировки ответа.
 
