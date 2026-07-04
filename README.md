@@ -4,7 +4,7 @@
 
 Проект рассчитан на R&D-задачи в горно-металлургической и материаловедческой тематике: материалы, процессы, режимы, свойства, числовые параметры, оборудование, источники, выводы, противоречия и пробелы в данных.
 
-## Возможности
+## Что умеет проект
 
 - Streamlit UI для загрузки документов и вопросов.
 - FastAPI backend с endpoint `/ask`.
@@ -18,18 +18,19 @@
 - Опциональный Qdrant/vector backend.
 - Базовый режим без внешних LLM API-ключей.
 
-Базовый режим для проверки — `economy_core`: BM25 + deterministic extraction + fallback/graph logic, без внешнего LLM и без локальной embedding-модели.
+Рекомендуемый режим для локальной проверки — `economy_core`: BM25 + deterministic extraction + fallback/graph logic, без внешнего LLM и без локальной embedding-модели.
 
 ---
 
-## Быстрый запуск локально через Docker
+## Быстрый запуск для проверяющих
 
 ### 1. Требования
 
 Нужно установить:
 
 - Git;
-- Docker Desktop.
+- Docker Desktop;
+- 4 GB+ свободной RAM желательно для полного docker-compose с Neo4j и Qdrant.
 
 Проверка:
 
@@ -45,21 +46,23 @@ git clone https://github.com/Leo-Daiser/NorNickel-XAK.git
 cd NorNickel-XAK
 ```
 
-### 3. Создать `.env`
+### 3. Создать локальный `.env`
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Для первого запуска реальные API-ключи не нужны. Базовый запуск работает локально.
+Для первого запуска реальные API-ключи не нужны. Базовый режим `economy_core` работает локально без YandexGPT/OpenRouter.
 
 ### 4. Запустить сервисы
+
+Полный локальный запуск с UI, API, Neo4j и Qdrant:
 
 ```powershell
 docker compose --profile full up -d --build
 ```
 
-Первый запуск может занять несколько минут.
+Первый build может занять несколько минут.
 
 Проверить контейнеры:
 
@@ -101,13 +104,15 @@ Invoke-WebRequest http://localhost:8501/_stcore/health
 Start-Process http://localhost:8501
 ```
 
+Если UI открылся на `http://localhost:8501`, проект готов к ручному тестированию.
+
 ---
 
 ## Данные
 
 Исходный датасет хакатона **не включен** в репозиторий.
 
-Для локального запуска с полным корпусом нужно распаковать выданный датасет в папку:
+Для локального запуска с полным корпусом нужно распаковать выданный организаторами датасет в папку:
 
 ```text
 data_storage/
@@ -146,17 +151,25 @@ evaluation/test_corpus/
 
 ### Вариант B — загрузить часть реального корпуса скриптом
 
-После запуска Docker можно загрузить выборку из `data_storage/` через API:
+После запуска Docker можно загрузить выборку из `data_storage/`:
 
 ```powershell
-python -m pip install requests
-python scripts/stage_real_corpus_demo.py --input data_storage --count 25 --reset --sync-neo4j
+docker compose exec api python scripts/stage_real_corpus_demo.py --input /code/hackathon_project/data_storage --count 25 --reset --sync-neo4j
+```
+
+Если данные лежат на хосте в `data_storage/`, а контейнер их не видит, используйте UI-загрузку или добавьте volume-монтирование в `docker-compose.yml`:
+
+```yaml
+    volumes:
+      - ./data:/data
+      - ./models:/models:ro
+      - ./data_storage:/code/hackathon_project/data_storage:ro
 ```
 
 Dry-run без загрузки:
 
 ```powershell
-python scripts/stage_real_corpus_demo.py --input data_storage --count 25 --dry-run
+docker compose exec api python scripts/stage_real_corpus_demo.py --input /code/hackathon_project/data_storage --count 25 --dry-run
 ```
 
 Скрипт загружает файлы по одному, обновляет граф после загрузки и сохраняет отчет в `artifacts/`.
