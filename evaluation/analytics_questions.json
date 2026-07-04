@@ -1,0 +1,68 @@
+[
+  {
+    "id": "a_vt6_overview",
+    "question": "Что уже делали по ВТ6?",
+    "expected_intent": "material_overview",
+    "focus_material": "ВТ6"
+  },
+  {
+    "id": "a_7075_overview",
+    "question": "Что известно по сплаву 7075-T6?",
+    "expected_intent": "material_overview",
+    "focus_material": "7075-T6"
+  },
+  {
+    "id": "a_steel_regimes",
+    "question": "Какие режимы применялись к 12Х18Н10Т?",
+    "expected_intent": "material_overview",
+    "focus_material": "12Х18Н10Т"
+  },
+  {
+    "id": "a_strength_property",
+    "question": "Где измеряли прочность?",
+    "expected_intent": "property_overview"
+  },
+  {
+    "id": "a_material_compare",
+    "question": "Сравни ВТ6 и 7075-T6 по прочности.",
+    "expected_intent": "material_comparison"
+  },
+  {
+    "id": "a_regime_compare",
+    "question": "Чем отличаются отжиг и старение по эффекту на свойства?",
+    "expected_intent": "regime_comparison"
+  },
+  {
+    "id": "a_similar",
+    "question": "Найди похожие эксперименты на ВТ6 при отжиге.",
+    "expected_intent": "similar_experiments"
+  },
+  {
+    "id": "a_equipment",
+    "question": "Какое оборудование использовали для отжига ВТ6?",
+    "expected_intent": "equipment_usage",
+    "focus_material": "ВТ6"
+  },
+  {
+    "id": "a_lab",
+    "question": "Какая лаборатория занималась 12Х18Н10Т?",
+    "expected_intent": "lab_activity",
+    "focus_material": "12Х18Н10Т"
+  },
+  {
+    "id": "a_gaps",
+    "question": "Какие пробелы есть по коррозионной стойкости?",
+    "expected_intent": "gap_analysis"
+  },
+  {
+    "id": "a_neighborhood",
+    "question": "Покажи связанные сущности по ВТ6.",
+    "expected_intent": "graph_neighborhood",
+    "focus_material": "ВТ6"
+  },
+  {
+    "id": "a_topic",
+    "question": "Что есть по теме титановых сплавов?",
+    "expected_intent": "topic_search"
+  }
+]

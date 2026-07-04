@@ -1,0 +1,53 @@
+[
+  {
+    "id": "adv_e1_strength_ductility",
+    "text": "Эксперимент E1: сплав ВТ6, отжиг 900 °C 2 ч. Предел прочности σв составил 1120 МПа, относительное удлинение 8 %.",
+    "expected_material": "ВТ6",
+    "forbidden_materials": ["E1"],
+    "expected_measurements": [
+      {"property": "прочность", "value": 1120, "unit": "MPa"},
+      {"property": "пластичность", "value": 8, "unit": "%"}
+    ]
+  },
+  {
+    "id": "adv_strength_increased",
+    "text": "После отжига сплава ВТ6 при 900 °C в течение 2 ч предел прочности увеличился до 1120 МПа.",
+    "expected_material": "ВТ6",
+    "expected_regime": "отжиг",
+    "expected_measurements": [
+      {"property": "прочность", "value": 1120, "unit": "MPa", "effect": "increase"}
+    ]
+  },
+  {
+    "id": "adv_lab_employees",
+    "text": "Исследование ВТ6 выполняли Иванов И.И. и Петров П.П. в лаборатории легких сплавов; режим отжиг, прочность 1100 МПа.",
+    "expected_material": "ВТ6",
+    "expected_regime": "отжиг",
+    "expected_laboratories": ["лаборатории легких сплавов"],
+    "expected_employees": ["Иванов И.И.", "Петров П.П."],
+    "expected_measurements": [
+      {"property": "прочность", "value": 1100, "unit": "MPa"}
+    ]
+  },
+  {
+    "id": "adv_exp_vt6_not_material",
+    "text": "EXP-VT6-001: материал ВТ6; старение 500 °C; твердость HV 340.",
+    "expected_material": "ВТ6",
+    "forbidden_materials": ["EXP-VT6-001"],
+    "expected_regime": "старение",
+    "expected_measurements": [
+      {"property": "твёрдость", "value": 340, "unit": "HV"}
+    ]
+  },
+  {
+    "id": "adv_7075_gap",
+    "text": "Для 7075-T6 после старения прочность 540 МПа, удлинение 11 %, коррозионная стойкость не измерялась.",
+    "expected_material": "7075-T6",
+    "expected_regime": "старение",
+    "expected_gap_property": "коррозионная стойкость",
+    "expected_measurements": [
+      {"property": "прочность", "value": 540, "unit": "MPa"},
+      {"property": "пластичность", "value": 11, "unit": "%"}
+    ]
+  }
+]

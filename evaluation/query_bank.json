@@ -1,0 +1,127 @@
+[
+  {
+    "id": "exact_vt6_anneal_strength",
+    "section": "exact_factual",
+    "question": "Что делали по сплаву ВТ6 при отжиге и какой был эффект на прочность?"
+  },
+  {
+    "id": "exact_7075_aging",
+    "section": "exact_factual",
+    "question": "Какие данные есть по 7075-T6 после старения?"
+  },
+  {
+    "id": "exact_steel_hardness",
+    "section": "exact_factual",
+    "question": "Какая твердость указана для 12Х18Н10Т после закалки?"
+  },
+  {
+    "id": "comparison_vt6_7075_strength",
+    "section": "comparison",
+    "question": "Сравни ВТ6 и 7075-T6 по прочности."
+  },
+  {
+    "id": "comparison_vt6_sources",
+    "section": "comparison",
+    "question": "Сравни значения прочности ВТ6 для разных источников."
+  },
+  {
+    "id": "materials_with_strength_heat_treatment",
+    "section": "comparison",
+    "question": "Какие материалы имеют данные по прочности после термообработки?"
+  },
+  {
+    "id": "conflict_vt6_strength_anneal",
+    "section": "conflict",
+    "question": "Есть ли противоречия по прочности ВТ6 после отжига?"
+  },
+  {
+    "id": "conflict_same_regime_values",
+    "section": "conflict",
+    "question": "Какие значения расходятся по одному и тому же режиму?"
+  },
+  {
+    "id": "data_gaps_all",
+    "section": "data_gap",
+    "question": "Какие пробелы в данных обнаружены?"
+  },
+  {
+    "id": "data_gap_corrosion_vt6",
+    "section": "data_gap",
+    "question": "Есть ли численные данные по коррозионной стойкости для ВТ6?"
+  },
+  {
+    "id": "data_gap_explicit_not_measured",
+    "section": "data_gap",
+    "question": "Где явно указано, что данные не измерялись?"
+  },
+  {
+    "id": "provenance_vt6",
+    "section": "provenance",
+    "question": "На каких источниках основан ответ по ВТ6?"
+  },
+  {
+    "id": "provenance_7075_evidence",
+    "section": "provenance",
+    "question": "Покажи evidence по прочности 7075-T6 после aging."
+  },
+  {
+    "id": "web_vt6_anneal",
+    "section": "web_source",
+    "question": "Что найдено на загруженной веб-странице про ВТ6 после отжига?"
+  },
+  {
+    "id": "web_strength_sources",
+    "section": "web_source",
+    "question": "Какие web sources дали данные по прочности?"
+  },
+  {
+    "id": "negative_x999_laser",
+    "section": "negative",
+    "question": "Что известно о X999 при лазерной обработке?"
+  },
+  {
+    "id": "negative_7075_cryo_plasticity",
+    "section": "negative",
+    "question": "Есть ли данные по пластичности 7075-T6 после криообработки?"
+  },
+  {
+    "id": "negative_corrosion_equipment",
+    "section": "negative",
+    "question": "Какие установки использовались для измерения коррозионной стойкости?"
+  },
+  {
+    "id": "growth_new_connections",
+    "section": "growth",
+    "question": "Какие новые связи появились после загрузки новых документов?"
+  },
+  {
+    "id": "growth_comparison_opportunities",
+    "section": "growth",
+    "question": "Какие comparison opportunities появились?"
+  },
+  {
+    "id": "growth_web_changes",
+    "section": "growth",
+    "question": "Что изменилось после добавления web pages?"
+  },
+  {
+    "id": "active_inactive_change",
+    "section": "active_inactive",
+    "question": "Что изменится, если отключить документ C?"
+  },
+  {
+    "id": "active_7075_current",
+    "section": "active_inactive",
+    "question": "Какие данные сейчас активны по 7075-T6?"
+  },
+  {
+    "id": "resource_critical_vt6",
+    "section": "resource_mode",
+    "question": "В economy_core ответь: что известно по ВТ6 после отжига?"
+  },
+  {
+    "id": "resource_critical_7075",
+    "section": "resource_mode",
+    "question": "В balanced_hybrid найди данные по strength after aging treatment для 7075-T6."
+  }
+]

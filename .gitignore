@@ -1,0 +1,94 @@
+﻿# Secrets
+.env
+.env.*
+!.env.example
+
+# Original/private hackathon data
+data_storage/
+
+# Generated runtime data
+data/
+artifacts/
+volumes/
+models/
+
+# Docker/database/vector/graph runtime storage
+qdrant_storage/
+qdrant_data/
+neo4j_data/
+*.sqlite
+*.sqlite3
+*.db
+
+# Archives/temp
+*.zip
+*.7z
+*.rar
+*.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Node/frontend
+node_modules/
+dist/
+build/
+.next/
+
+# Logs
+*.log
+logs/
+
+# Tool/runtime traces
+.playwright-mcp/
+.codex/config.toml
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+.env
+.env.*
+!.env.example
+
+data_storage/
+data/
+artifacts/
+volumes/
+models/
+
+node_modules/
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+dist/
+build/
+logs/
+*.log
+*.zip
+*.7z
+*.rar
+*.tmp
+*.sqlite
+*.sqlite3
+*.db
+
+.playwright-mcp/
+.codex/config.toml
+
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

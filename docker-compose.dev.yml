@@ -1,0 +1,9 @@
+services:
+  api:
+    volumes:
+      - ./:/code/hackathon_project
+      - ./data:/data
+
+  ui:
+    volumes:
+      - ./:/code/hackathon_project

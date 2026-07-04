@@ -1,0 +1,35 @@
+[
+  {
+    "id": "s_vt6_cryo_toughness",
+    "question": "Что делали по сплаву ВТ6 при криообработке и как изменилась вязкость?",
+    "expected_status": "no_exact_match",
+    "expected_terms": ["ВТ6", "криообработка", "вязкость", "точных данных"],
+    "expect_no_exact_facts": true,
+    "forbidden_answer_terms": ["криообработка дала", "криообработка повысила"]
+  },
+  {
+    "id": "s_x999_annealing_strength",
+    "question": "Что делали по сплаву X999 при отжиге и какой был эффект на прочность?",
+    "expected_status": "no_exact_match",
+    "expected_terms": ["X999", "отжиг", "прочность", "точных данных"],
+    "expect_no_exact_facts": true
+  },
+  {
+    "id": "s_vt6_gaps",
+    "question": "Какие пробелы в данных есть по ВТ6?",
+    "expected_terms": ["ВТ6", "status", "constraints"]
+  },
+  {
+    "id": "s_vt6_decision_history",
+    "question": "Покажи историю решений по ВТ6.",
+    "expected_status": "ok",
+    "expected_terms": ["ВТ6", "decision_history", "SCI-VT6-AN-900"]
+  },
+  {
+    "id": "s_7075_aging_corrosion_gap",
+    "question": "Что делали по 7075-T6 при старении и какой был эффект на коррозионную стойкость?",
+    "expected_status": "no_exact_match",
+    "expected_terms": ["7075-T6", "старение", "коррозионная стойкость", "gap"],
+    "expect_no_exact_facts": true
+  }
+]

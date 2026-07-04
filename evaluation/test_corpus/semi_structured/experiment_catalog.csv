@@ -1,0 +1,5 @@
+material,regime,property,value,unit,effect,source_note
+ВТ6,отжиг,прочность,980,MPa,increase,clean catalog row
+7075-T6,старение,прочность,77,ksi,unknown,aging treatment row
+12Х18Н10Т,закалка,твердость,210,HV,unknown,hardness row
+ВТ6,термообработка,коррозионная стойкость,,,unknown,no numerical corrosion data reported

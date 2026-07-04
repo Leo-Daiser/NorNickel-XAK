@@ -1,0 +1,6 @@
+# Optional dense retrieval.
+#
+# Installs sentence-transformers and therefore usually installs torch.
+# Do not install this for CPU-only fallback/BM25 demos.
+-r requirements.txt
+sentence-transformers

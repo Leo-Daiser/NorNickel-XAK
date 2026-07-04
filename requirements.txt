@@ -1,0 +1,22 @@
+# Minimal runtime dependencies. This set is enough for API, Streamlit UI,
+# smoke tests, plain-text ingestion and local BM25 fallback.
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+streamlit<1.38
+starlette==0.27.0
+anyio<4
+pydantic
+pydantic-settings
+python-multipart
+requests
+httpx<0.28
+pytest
+neo4j
+qdrant-client
+pandas
+openpyxl
+python-docx
+python-pptx
+beautifulsoup4
+pypdf
+graphviz

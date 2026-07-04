@@ -1,0 +1,22 @@
+services:
+  api:
+    build:
+      context: .
+      args:
+        INSTALL_FULL: ${INSTALL_FULL:-true}
+    environment:
+      RETRIEVAL_MODE: ${RETRIEVAL_MODE:-hybrid}
+      ENABLE_LOCAL_EMBEDDINGS: ${ENABLE_LOCAL_EMBEDDINGS:-true}
+      EAGER_LOCAL_EMBEDDINGS: ${EAGER_LOCAL_EMBEDDINGS:-false}
+      ENABLE_LLM: ${ENABLE_LLM:-false}
+      LLM_PROVIDER: ${LLM_PROVIDER:-none}
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:11434}
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b-instruct}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-8}
+
+  ui:
+    build:
+      context: .
+      args:
+        INSTALL_FULL: ${INSTALL_FULL:-true}

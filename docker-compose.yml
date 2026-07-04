@@ -1,0 +1,77 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    profiles: ["full"]
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./volumes/qdrant:/qdrant/storage
+    restart: unless-stopped
+
+  neo4j:
+    image: neo4j:latest
+    profiles: ["full"]
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-password}
+      NEO4J_PLUGINS: '["apoc"]'
+    volumes:
+      - ./volumes/neo4j:/data
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      args:
+        INSTALL_FULL: ${INSTALL_FULL:-false}
+        EXTRA_REQUIREMENTS: ${EXTRA_REQUIREMENTS:-requirements.txt}
+    working_dir: /code/hackathon_project
+    command: ["uvicorn", "app.api:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      RUNTIME_PROFILE: ${RUNTIME_PROFILE:-economy_core}
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6333
+      QDRANT_COLLECTION: documents
+      NEO4J_URI: ${NEO4J_DOCKER_URI:-bolt://neo4j:7687}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-password}
+      NEO4J_DATABASE: ${NEO4J_DATABASE:-neo4j}
+      KG_BACKEND: ${KG_BACKEND:-auto}
+      DATA_DIR: /data
+      METADATA_DB_PATH: /data/outbox.sqlite3
+      CATALOG_DB_PATH: /data/catalog.sqlite3
+      EMBEDDING_MODEL_PATH: ${EMBEDDING_MODEL_PATH:-}
+      SENTENCE_TRANSFORMERS_HOME: ${SENTENCE_TRANSFORMERS_HOME:-/models}
+      HF_HOME: ${HF_HOME:-/models/hf}
+      TRANSFORMERS_OFFLINE: ${TRANSFORMERS_OFFLINE:-0}
+    volumes:
+      - ./data:/data
+      - ./models:/models:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ui:
+    build:
+      context: .
+      args:
+        INSTALL_FULL: ${INSTALL_FULL:-false}
+        EXTRA_REQUIREMENTS: ${EXTRA_REQUIREMENTS:-requirements.txt}
+    command: ["streamlit", "run", "/code/hackathon_project/app/ui.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
+    ports:
+      - "8501:8501"
+    environment:
+      API_BASE: http://api:8000
+    depends_on:
+      - api
+    restart: unless-stopped

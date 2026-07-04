@@ -1,0 +1,6 @@
+{
+  "purpose": "Synthetic corpus manifest. JSON is intentionally not required as a production ingestion format in this phase.",
+  "supported_ingestion_formats": ["txt", "md", "html", "csv"],
+  "unsupported_but_present_for_coverage": ["json"],
+  "ontology_note": "Employees, labs and equipment appear only as unsupported coverage probes; production ontology is not expanded."
+}

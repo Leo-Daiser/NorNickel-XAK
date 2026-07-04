@@ -1,0 +1,2 @@
+The 7075-T6 aluminum alloy showed tensile strength of 77 ksi after aging treatment.
+The value should be compared after converting ksi to MPa.

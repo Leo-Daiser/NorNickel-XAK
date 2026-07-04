@@ -1,0 +1,22 @@
+[
+  {"canonical_id": "MPa", "entity_type": "Unit", "ru": ["мпа", "МПа"], "en": ["mpa"], "compatible_fact_types": ["MechanicalPropertyFact", "ProcessParameterFact"]},
+  {"canonical_id": "GPa", "entity_type": "Unit", "ru": ["гпа"], "en": ["gpa"], "compatible_fact_types": ["MechanicalPropertyFact"]},
+  {"canonical_id": "ksi", "entity_type": "Unit", "ru": [], "en": ["ksi"], "compatible_fact_types": ["MechanicalPropertyFact"]},
+  {"canonical_id": "%", "entity_type": "Unit", "ru": ["%"], "en": ["%"], "compatible_fact_types": ["MechanicalPropertyFact", "ProcessParameterFact", "FacilityCapacityFact"]},
+  {"canonical_id": "mg/L", "entity_type": "Unit", "ru": ["мг/л", "мг/дм3", "мг/дм³"], "en": ["mg/l", "mg/dm3", "mg/dm³"], "compatible_fact_types": ["ProcessParameterFact"]},
+  {"canonical_id": "g/L", "entity_type": "Unit", "ru": ["г/л"], "en": ["g/l"], "compatible_fact_types": ["ProcessParameterFact"]},
+  {"canonical_id": "m/s", "entity_type": "Unit", "ru": ["м/с"], "en": ["m/s"], "compatible_fact_types": ["ProcessParameterFact"]},
+  {"canonical_id": "m3/h", "entity_type": "Unit", "ru": ["м3/ч", "м³/ч"], "en": ["m3/h", "m³/h"], "compatible_fact_types": ["ProcessParameterFact"]},
+  {"canonical_id": "t/day", "entity_type": "Unit", "ru": ["т/сут", "т/сутки"], "en": ["t/day", "t/d"], "compatible_fact_types": ["FacilityCapacityFact", "ProcessParameterFact"]},
+  {"canonical_id": "t/y", "entity_type": "Unit", "ru": ["т/год", "т/г"], "en": ["t/y", "t/year", "tpa"], "compatible_fact_types": ["FacilityCapacityFact"]},
+  {"canonical_id": "kt/y", "entity_type": "Unit", "ru": ["кт/год", "тыс. т/год", "тыс.т/год"], "en": ["kt/y", "kt/year", "ktpa"], "compatible_fact_types": ["FacilityCapacityFact"]},
+  {"canonical_id": "Mt/y", "entity_type": "Unit", "ru": ["мт/год", "млн т/год", "млн. т/год"], "en": ["Mt/y", "Mt/year", "Mtpa"], "compatible_fact_types": ["FacilityCapacityFact"]},
+  {"canonical_id": "г/т", "entity_type": "Unit", "ru": ["г/т"], "en": ["g/t"], "compatible_fact_types": ["ProcessParameterFact"]},
+  {"canonical_id": "mg/kg", "entity_type": "Unit", "ru": ["мг/кг"], "en": ["mg/kg"], "compatible_fact_types": ["ProcessParameterFact"]},
+  {"canonical_id": "USD/t", "entity_type": "Unit", "ru": ["$/т"], "en": ["usd/t", "$/t"], "compatible_fact_types": ["EconomicIndicatorFact"]},
+  {"canonical_id": "EUR/t", "entity_type": "Unit", "ru": ["€/т"], "en": ["eur/t", "€/t"], "compatible_fact_types": ["EconomicIndicatorFact"]},
+  {"canonical_id": "RUB/t", "entity_type": "Unit", "ru": ["руб/т", "руб./т"], "en": ["rub/t"], "compatible_fact_types": ["EconomicIndicatorFact"]},
+  {"canonical_id": "C", "entity_type": "Unit", "ru": ["°с", "с"], "en": ["°c", "c", "celsius"], "compatible_fact_types": ["ProcessParameterFact"]},
+  {"canonical_id": "pH", "entity_type": "Unit", "ru": ["ph", "pH"], "en": ["ph", "pH"], "compatible_fact_types": ["ProcessParameterFact"]},
+  {"canonical_id": "bar", "entity_type": "Unit", "ru": ["бар"], "en": ["bar"], "compatible_fact_types": ["ProcessParameterFact"]}
+]

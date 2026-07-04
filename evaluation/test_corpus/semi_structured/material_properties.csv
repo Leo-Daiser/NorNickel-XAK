@@ -1,0 +1,4 @@
+material,regime,property,value,unit,effect,source_note
+Ti-6Al-4V,annealing,ultimate tensile strength,1120,MPa,increase,english row
+ВТ6,отжиг,предел прочности,931,MPa,decrease,conflicting catalog estimate
+7075 Т6,aging,tensile strength,77,ksi,unknown,variant spelling row

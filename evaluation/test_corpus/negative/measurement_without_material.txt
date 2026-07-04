@@ -1,0 +1,2 @@
+The measured value was 450 MPa, but the source does not specify material, processing regime or property.
+This should not become a high-confidence material measurement.

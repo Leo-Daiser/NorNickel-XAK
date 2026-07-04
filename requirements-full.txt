@@ -1,0 +1,22 @@
+# Convenience bundle for a strong demo machine.
+#
+# This file is intentionally no longer the default Docker/API install target.
+# It pulls sentence-transformers and can download torch/model assets. Use only
+# when you really need local dense embeddings on the same machine.
+-r requirements.txt
+markitdown
+networkx
+sentence-transformers
+
+# Heavy research/ML extras. Keep them explicit; uncomment only if needed.
+# bm25s
+# docling
+# faiss-cpu
+# FlagEmbedding
+# outlines
+# transformers
+
+# OCR/VLM extras are not required for the current hackathon fallback because
+# organizers mostly provide text-layer Word/PDF documents.
+# ocrmypdf
+# paddleocr

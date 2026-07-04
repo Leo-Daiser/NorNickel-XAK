@@ -1,0 +1,12 @@
+[
+  {"canonical_id": "обессоливание", "entity_type": "Process", "ru": ["обессоливание", "обессоливания", "водоочистка"], "en": ["desalination", "water treatment"], "compatible_fact_types": ["TechnologySolutionFact", "ProcessParameterFact"]},
+  {"canonical_id": "электроэкстракция", "entity_type": "Process", "ru": ["электроэкстракция", "электроэкстракции", "электроэкстракция никеля", "электролиз", "электролиза"], "en": ["electrowinning", "nickel electrowinning", "electroextraction", "electrolysis"], "compatible_fact_types": ["TechnologySolutionFact", "ProcessParameterFact"]},
+  {"canonical_id": "циркуляция католита", "entity_type": "Process", "ru": ["циркуляция католита", "циркуляции католита", "скорость циркуляции католита"], "en": ["catholyte circulation", "catholyte flow"], "compatible_fact_types": ["ProcessParameterFact", "TechnologySolutionFact"]},
+  {"canonical_id": "выщелачивание", "entity_type": "Process", "ru": ["выщелачивание", "выщелачивания"], "en": ["leaching"], "compatible_fact_types": ["ExperimentResultFact", "ProcessParameterFact"]},
+  {"canonical_id": "кучное выщелачивание", "entity_type": "Process", "ru": ["кучное выщелачивание", "кучного выщелачивания"], "en": ["heap leaching"], "compatible_fact_types": ["ExperimentResultFact", "ProcessParameterFact"]},
+  {"canonical_id": "газоочистка", "entity_type": "Process", "ru": ["газоочистка", "очистка газов", "очистки газов"], "en": ["gas cleaning", "gas treatment"], "compatible_fact_types": ["TechnologySolutionFact", "ProcessParameterFact"]},
+  {"canonical_id": "удаление SO2", "entity_type": "Process", "ru": ["удаление so2", "удаления so2", "удаление SO₂", "удаление диоксида серы"], "en": ["so2 removal", "sulfur dioxide removal", "sulphur dioxide removal"], "compatible_fact_types": ["TechnologySolutionFact", "ProcessParameterFact"]},
+  {"canonical_id": "закачка шахтных вод", "entity_type": "Process", "ru": ["закачка шахтных вод", "закачки шахтных вод"], "en": ["deep well injection", "mine water injection"], "compatible_fact_types": ["TechnologySolutionFact", "EconomicIndicatorFact"]},
+  {"canonical_id": "плавка", "entity_type": "Process", "ru": ["плавка", "плавки"], "en": ["smelting"], "compatible_fact_types": ["ExperimentResultFact", "ProcessParameterFact"]},
+  {"canonical_id": "ПВП", "entity_type": "Process", "ru": ["пвп", "печь взвешенной плавки", "печи взвешенной плавки"], "en": ["flash smelting furnace", "fluidized bed furnace"], "compatible_fact_types": ["TechnologySolutionFact", "ProcessParameterFact"]}
+]

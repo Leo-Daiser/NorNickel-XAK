@@ -1,0 +1,3 @@
+The pump assembly was tested at 1050 C in a maintenance oven.
+No alloy strength, hardness or corrosion resistance measurement is reported.
+The material X999 is mentioned only as a placeholder in a software example.

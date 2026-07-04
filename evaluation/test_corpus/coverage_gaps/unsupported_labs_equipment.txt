@@ -1,0 +1,3 @@
+The experiment was prepared by Team Alpha in Laboratory L-3 using furnace F-900 and microscope M-12.
+No material-property measurement is reported in this paragraph.
+This fixture checks that unsupported employees, labs and equipment do not force ontology expansion.

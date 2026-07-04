@@ -1,0 +1,23 @@
+[
+  {"canonical_id": "никель", "entity_type": "Metal", "ru": ["никель", "никеля", "никелевый", "никелевым"], "en": ["nickel", "ni"], "compatible_fact_types": ["ProcessParameterFact", "FacilityCapacityFact", "ExperimentResultFact"]},
+  {"canonical_id": "медь", "entity_type": "Metal", "ru": ["медь", "медный", "медным", "медном"], "en": ["copper", "cu"], "compatible_fact_types": ["ProcessParameterFact", "FacilityCapacityFact", "ExperimentResultFact"]},
+  {"canonical_id": "сульфаты", "entity_type": "ChemicalSubstance", "ru": ["сульфаты", "сульфат"], "en": ["sulfates", "sulphates", "so4"], "compatible_fact_types": ["ProcessParameterFact"]},
+  {"canonical_id": "SO2", "entity_type": "ChemicalSubstance", "ru": ["SO2", "SO₂", "диоксид серы", "сернистый газ"], "en": ["so2", "sulfur dioxide", "sulphur dioxide"], "compatible_fact_types": ["ProcessParameterFact", "TechnologySolutionFact", "PublicationClaimFact"]},
+  {"canonical_id": "хлориды", "entity_type": "ChemicalSubstance", "ru": ["хлориды", "хлорид"], "en": ["chlorides", "cl"], "compatible_fact_types": ["ProcessParameterFact"]},
+  {"canonical_id": "Ca", "entity_type": "ChemicalSubstance", "ru": ["кальций"], "en": ["ca", "calcium"], "compatible_fact_types": ["ProcessParameterFact"]},
+  {"canonical_id": "Mg", "entity_type": "ChemicalSubstance", "ru": ["магний"], "en": ["mg", "magnesium"], "compatible_fact_types": ["ProcessParameterFact"]},
+  {"canonical_id": "Na", "entity_type": "ChemicalSubstance", "ru": ["натрий"], "en": ["na", "sodium"], "compatible_fact_types": ["ProcessParameterFact"]},
+  {"canonical_id": "Au", "entity_type": "ChemicalSubstance", "ru": ["золото"], "en": ["au", "gold"], "compatible_fact_types": ["ExperimentResultFact", "ProcessParameterFact"]},
+  {"canonical_id": "Ag", "entity_type": "ChemicalSubstance", "ru": ["серебро"], "en": ["ag", "silver"], "compatible_fact_types": ["ExperimentResultFact", "ProcessParameterFact"]},
+  {"canonical_id": "МПГ", "entity_type": "ChemicalSubstance", "ru": ["мпг", "платиновые металлы", "металлы платиновой группы"], "en": ["pgm", "platinum group metals"], "compatible_fact_types": ["ExperimentResultFact", "ProcessParameterFact"]},
+  {"canonical_id": "штейн", "entity_type": "Matte", "ru": ["штейн", "медный штейн", "никелевый штейн"], "en": ["matte", "copper matte", "nickel matte"], "compatible_fact_types": ["ExperimentResultFact", "ProcessParameterFact"]},
+  {"canonical_id": "шлак", "entity_type": "Slag", "ru": ["шлак", "медный шлак", "никелевый шлак"], "en": ["slag", "copper slag", "nickel slag"], "compatible_fact_types": ["ExperimentResultFact", "ProcessParameterFact"]},
+  {"canonical_id": "шахтные воды", "entity_type": "Water", "ru": ["шахтные воды", "шахтных вод", "кислый дренаж"], "en": ["mine water", "acid mine drainage"], "compatible_fact_types": ["ProcessParameterFact", "TechnologySolutionFact"]},
+  {"canonical_id": "католит", "entity_type": "Catholyte", "ru": ["католит", "католита"], "en": ["catholyte"], "compatible_fact_types": ["ProcessParameterFact", "TechnologySolutionFact"]},
+  {"canonical_id": "электролит", "entity_type": "Electrolyte", "ru": ["электролит", "электролита"], "en": ["electrolyte"], "compatible_fact_types": ["ProcessParameterFact", "TechnologySolutionFact"]},
+  {"canonical_id": "раствор", "entity_type": "Solution", "ru": ["раствор", "раствора"], "en": ["solution"], "compatible_fact_types": ["ProcessParameterFact"]},
+  {"canonical_id": "руда", "entity_type": "Ore", "ru": ["руда", "руды", "никелевая руда", "медная руда"], "en": ["ore", "nickel ore", "copper ore"], "compatible_fact_types": ["ExperimentResultFact", "ProcessParameterFact"]},
+  {"canonical_id": "концентрат", "entity_type": "Concentrate", "ru": ["концентрат", "концентрата", "пирротиновый концентрат"], "en": ["concentrate", "pyrrhotite concentrate"], "compatible_fact_types": ["ExperimentResultFact", "ProcessParameterFact"]},
+  {"canonical_id": "техногенный гипс", "entity_type": "MaterialSample", "ru": ["техногенный гипс"], "en": ["gypsum", "technogenic gypsum"], "compatible_fact_types": ["ExperimentResultFact", "ProcessParameterFact"]},
+  {"canonical_id": "угольные отходы", "entity_type": "MaterialSample", "ru": ["угольные отходы"], "en": ["coal waste"], "compatible_fact_types": ["ExperimentResultFact", "ProcessParameterFact"]}
+]

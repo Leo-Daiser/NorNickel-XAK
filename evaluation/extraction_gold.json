@@ -1,0 +1,69 @@
+[
+  {
+    "id": "text_vt6_annealing_strength",
+    "kind": "text",
+    "text": "Эксперимент EXP-VT6-ANN-001: сплав ВТ6 после отжига 900 C 2 h показал прочность 1120 MPa; прочность повысилась. Оборудование: печь SNOL. Лаборатория: Лаборатория термообработки.",
+    "expected_experiments": 1,
+    "expected_material": "ВТ6",
+    "expected_regime": "отжиг",
+    "expected_property": "прочность",
+    "expected_unit": "MPa"
+  },
+  {
+    "id": "text_vt6_aging_hardness",
+    "kind": "text",
+    "text": "Эксперимент EXP-VT6-AGE-002: материал ВТ6, режим старение 520 C 4 h, измерена твёрдость 360 HV, эффект increased.",
+    "expected_experiments": 1,
+    "expected_material": "ВТ6",
+    "expected_regime": "старение",
+    "expected_property": "твёрдость",
+    "expected_unit": "HV"
+  },
+  {
+    "id": "text_7075_corrosion_gap",
+    "kind": "text",
+    "text": "Для 7075-T6 после старения нет данных по коррозионной стойкости; коррозионная стойкость не измерялась.",
+    "expected_gaps": 1,
+    "expected_material": "7075-T6",
+    "expected_regime": "старение",
+    "expected_property": "коррозионная стойкость"
+  },
+  {
+    "id": "text_equipment",
+    "kind": "text",
+    "text": "Эксперимент EXP-EQ-003: ВТ6, отжиг, прочность 1110 MPa. Оборудование: вакуумная печь ВП-1 и машина Instron.",
+    "expected_experiments": 1,
+    "expected_equipment": "вакуумная печь ВП-1"
+  },
+  {
+    "id": "text_lab_team",
+    "kind": "text",
+    "text": "Эксперимент EXP-LAB-004: ВТ6, отжиг, прочность 1100 MPa. Лаборатория: Лаборатория механических испытаний. Команда: группа титановых сплавов.",
+    "expected_experiments": 1,
+    "expected_lab": "Лаборатория механических испытаний"
+  },
+  {
+    "id": "table_row_ru",
+    "kind": "table_row",
+    "text": "Table columns: Материал | Режим | Свойство | Значение | Единица | Оборудование | Лаборатория\nМатериал: ВТ6 | Режим: отжиг | Свойство: прочность | Значение: 1120 | Единица: МПа | Оборудование: печь SNOL | Лаборатория: Лаборатория A",
+    "expected_experiments": 1,
+    "expected_material": "ВТ6",
+    "expected_regime": "отжиг",
+    "expected_property": "прочность",
+    "expected_unit": "MPa"
+  },
+  {
+    "id": "negative_material_mention_only",
+    "kind": "text",
+    "text": "Сплав ВТ6 относится к титановым альфа-бета материалам и часто используется в авиации.",
+    "expected_experiments": 0,
+    "expect_rejection": true
+  },
+  {
+    "id": "ambiguous_two_experiments",
+    "kind": "text",
+    "text": "Эксперимент EXP-A: ВТ6 после отжига имеет прочность 1120 MPa. Эксперимент EXP-B: 7075-T6 после старения имеет прочность 540 MPa.",
+    "expected_experiments": 2,
+    "expected_no_merged_materials": ["ВТ6", "7075-T6"]
+  }
+]

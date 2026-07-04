@@ -1,0 +1,39 @@
+[
+  {
+    "id": "experiments_csv",
+    "path": "demo_data/experiments.csv",
+    "expect_table_rows": true,
+    "expect_chunks": true
+  },
+  {
+    "id": "experiments_xlsx",
+    "path": "demo_data/experiments.xlsx",
+    "expect_table_rows": true,
+    "expect_chunks": true
+  },
+  {
+    "id": "pump_spec_docx",
+    "path": "demo_data/pump_spec.docx",
+    "expect_paragraph_chunks": true,
+    "expect_chunks": true
+  },
+  {
+    "id": "steel_html",
+    "path": "demo_data/steel_12x18n10t.html",
+    "expect_chunks": true
+  },
+  {
+    "id": "valve_html",
+    "path": "demo_data/valve_datasheet.html",
+    "expect_image_refs": true,
+    "expect_table_rows": true,
+    "expect_chunks": true
+  },
+  {
+    "id": "article_vt6_txt",
+    "path": "demo_data/article_vt6.txt",
+    "expect_paragraph_chunks": true,
+    "expect_section_path": true,
+    "expect_chunks": true
+  }
+]

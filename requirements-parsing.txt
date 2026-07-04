@@ -1,0 +1,6 @@
+# Optional lightweight-ish parsing improvement.
+#
+# MarkItDown improves conversion for Office/HTML-like formats without making
+# OCR or neural extraction mandatory.
+-r requirements.txt
+markitdown

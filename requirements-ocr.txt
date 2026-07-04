@@ -1,0 +1,7 @@
+# Optional OCR layer for scanned PDFs/images.
+#
+# Not needed for the current hackathon assumptions when PDF/Word documents have
+# a text layer. These packages may require additional system dependencies.
+-r requirements.txt
+ocrmypdf
+paddleocr

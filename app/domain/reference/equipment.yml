@@ -1,0 +1,9 @@
+[
+  {"canonical_id": "ванна электроэкстракции", "entity_type": "Equipment", "ru": ["ванна электроэкстракции", "ванны электроэкстракции"], "en": ["electrowinning cell", "electrowinning cells", "electroextraction cell"], "compatible_fact_types": ["TechnologySolutionFact", "ProcessParameterFact"]},
+  {"canonical_id": "диафрагменная ячейка", "entity_type": "Equipment", "ru": ["диафрагменная ячейка", "диафрагменные ячейки"], "en": ["diaphragm cell", "diaphragm cells"], "compatible_fact_types": ["TechnologySolutionFact"]},
+  {"canonical_id": "ПВП", "entity_type": "Equipment", "ru": ["пвп", "печь взвешенной плавки", "печи взвешенной плавки"], "en": ["flash smelting furnace", "fluidized bed furnace"], "compatible_fact_types": ["TechnologySolutionFact", "ProcessParameterFact"]},
+  {"canonical_id": "система газоочистки", "entity_type": "Equipment", "ru": ["система газоочистки", "система очистки газов", "системы очистки газов"], "en": ["gas cleaning system", "gas treatment system"], "compatible_fact_types": ["TechnologySolutionFact", "ProcessParameterFact"]},
+  {"canonical_id": "реактор", "entity_type": "Equipment", "ru": ["реактор", "реакторы", "автоклав"], "en": ["reactor", "autoclave"], "compatible_fact_types": ["ExperimentResultFact", "ProcessParameterFact"]},
+  {"canonical_id": "насос", "entity_type": "Equipment", "ru": ["насос", "насосы"], "en": ["pump", "pumps"], "compatible_fact_types": ["TechnologySolutionFact", "ProcessParameterFact"]},
+  {"canonical_id": "скважина", "entity_type": "Equipment", "ru": ["скважина", "скважины", "нагнетательная скважина"], "en": ["well", "injection well"], "compatible_fact_types": ["TechnologySolutionFact", "EconomicIndicatorFact"]}
+]

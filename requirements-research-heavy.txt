@@ -1,0 +1,10 @@
+# Heavy experimental ML stack.
+#
+# This is intentionally separated from normal demo installs. It may download
+# torch, transformers, model weights and OCR dependencies.
+-r requirements.txt
+docling
+FlagEmbedding
+faiss-cpu
+outlines
+transformers
