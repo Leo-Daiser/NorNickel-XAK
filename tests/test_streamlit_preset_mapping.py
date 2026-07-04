@@ -49,6 +49,7 @@ def test_streamlit_ask_payload_uses_selected_preset_id() -> None:
         "question": "Сравни ВТ6 и 7075-T6 по прочности.",
         "top_k": 12,
         "preset_id": "expert_max",
+        "strict_audit_mode": False,
     }
 
 
@@ -66,7 +67,19 @@ def test_streamlit_ask_api_posts_json_body_with_selected_preset(monkeypatch) -> 
     assert response == {"status": "ok"}
     assert captured["path"] == "/ask"
     assert captured["json_body"]["preset_id"] == "strict_audit"
+    assert captured["json_body"]["strict_audit_mode"] is True
     assert captured["json_body"]["question"] == "Что уже делали по ВТ6?"
+
+
+def test_streamlit_strict_and_best_payloads_are_distinct() -> None:
+    best = ui.build_ask_payload("Вопрос", preset_id="expert_max")
+    strict = ui.build_ask_payload("Вопрос", preset_id="strict_audit")
+
+    assert best["preset_id"] == "expert_max"
+    assert best["strict_audit_mode"] is False
+    assert strict["preset_id"] == "strict_audit"
+    assert strict["strict_audit_mode"] is True
+    assert best != strict
 
 
 def test_streamlit_demo_questions_cover_demo_strengths() -> None:

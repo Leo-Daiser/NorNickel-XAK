@@ -57,6 +57,26 @@ def test_ask_json_body_with_preset(tmp_path: Path) -> None:
     assert payload["diagnostics"]["input_source"] == "json_body"
 
 
+def test_ask_json_body_strict_flag_overrides_best_preset(tmp_path: Path) -> None:
+    api = _reset_api(tmp_path)
+    client = TestClient(api.app)
+    _load_sample(client)
+
+    response = client.post(
+        "/ask",
+        json={
+            "question": "Что делали по ВТ6?",
+            "top_k": 5,
+            "preset_id": "expert_max",
+            "strict_audit_mode": True,
+        },
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["diagnostics"]["preset_id"] == "strict_audit"
+    assert payload["diagnostics"]["effective_runtime_mode"]["strict_audit_mode"] is True
+
+
 def test_ask_json_body_has_priority_over_query_params(tmp_path: Path) -> None:
     api = _reset_api(tmp_path)
     client = TestClient(api.app)

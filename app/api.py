@@ -44,7 +44,7 @@ from .retrieval.graph_retriever import GraphRetriever
 from .retrieval.metadata_filters import rerank_chunks_by_source_metadata
 from .retrieval.query_planner import QueryPlanner
 from .retrieval.retrieval import RetrievalEngine
-from .retrieval.typed_fact_retriever import TypedFactQuery, TypedFactRetriever
+from .retrieval.typed_fact_retriever import TypedFactQuery, TypedFactRetriever, filter_source_grounded_chunks
 from .runtime.profiles import runtime_profile_summary
 from .runtime.presets import RuntimePresetId, get_runtime_preset, list_runtime_presets, preset_diagnostics
 from .security.url_safety import UnsafeUrlError, fetch_url_safely
@@ -61,6 +61,7 @@ class AskRequest(BaseModel):
     question: str = Field(min_length=1)
     top_k: int = Field(default=8, ge=1, le=50)
     preset_id: RuntimePresetId | None = None
+    strict_audit_mode: bool | None = None
 
 
 class RuntimePresetRequest(BaseModel):
@@ -428,14 +429,28 @@ def _get_document_meta(doc_id: str):
     except Exception:
         return None
 
+
+def _display_source_name(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if re.fullmatch(r"doc_[0-9a-f]{12,}", text, flags=re.IGNORECASE):
+        return "источник корпуса"
+    # Some legacy rows store a stable technical document id as a filename prefix.
+    # Keep the readable source label on user-facing evidence and diagnostics.
+    return re.sub(r"^doc_[0-9a-f]{12,}[_-]+", "", text, flags=re.IGNORECASE)
+
+
 def _source_for_chunk(chunk: Chunk) -> Dict[str, Any]:
     doc_meta = _get_document_meta(chunk.doc_id)
-    source_name = chunk.metadata.get("source_name") or chunk.metadata.get("filename") or (doc_meta.title if doc_meta else chunk.doc_id)
+    raw_source_name = chunk.metadata.get("source_name") or chunk.metadata.get("filename") or (doc_meta.title if doc_meta else chunk.doc_id)
+    source_name = _display_source_name(raw_source_name)
+    filename = _display_source_name(chunk.metadata.get("filename") or (doc_meta.title if doc_meta else None))
     return {
         "doc_id": chunk.doc_id,
         "chunk_id": chunk.chunk_id,
         "title": source_name,
-        "filename": chunk.metadata.get("filename") or (doc_meta.title if doc_meta else None),
+        "filename": filename or None,
         "source_name": source_name,
         "source_type": chunk.metadata.get("source_type", "file"),
         "source_url": chunk.metadata.get("source_url"),
@@ -1058,6 +1073,16 @@ def _source_grounded_payload(
         "chunks_found_dense": retrieval.get("chunks_found_dense", 0),
         "chunks_after_fusion": retrieval.get("chunks_after_fusion", 0),
         "top_fused_chunks": retrieval.get("top_fused_chunks", []),
+        "evidence_candidates_before_filter": retrieval.get("evidence_candidates_before_filter"),
+        "evidence_candidates_after_filter": retrieval.get("evidence_candidates_after_filter", len(evidence_sources)),
+        "evidence_deduplicated_count": retrieval.get("evidence_deduplicated_count", 0),
+        "evidence_dropped_low_relevance_count": retrieval.get("evidence_dropped_low_relevance_count", 0),
+        "excluded_test_chunks_count": retrieval.get("excluded_test_chunks_count", 0),
+        "excluded_test_sources": retrieval.get("excluded_test_sources", []),
+        "retrieval_filtered_for_production": retrieval.get("retrieval_filtered_for_production", False),
+        "evidence_coverage_score": retrieval.get("evidence_coverage_score"),
+        "matched_evidence_anchors": retrieval.get("matched_evidence_anchors", []),
+        "missing_evidence_anchors": retrieval.get("missing_evidence_anchors", []),
         "partial_reason": "accepted facts отсутствуют; ответ ограничен найденными evidence chunks",
     }
     return {
@@ -1113,6 +1138,131 @@ def _source_grounded_payload(
     }
 
 
+def _strict_audit_no_verified_payload(
+    *,
+    question: str,
+    sources: List[Dict[str, Any]],
+    planned_constraints: Any,
+    retrieval: Dict[str, Any],
+    kg_diagnostics: Dict[str, Any],
+    llm: Dict[str, Any],
+    ask_intent: str,
+    fallback_reason: str,
+    missing_structured_fact_types: List[str] | None = None,
+) -> Dict[str, Any]:
+    evidence_sources = sources[: min(len(sources), 8)]
+    answer_lines = [
+        "Статус проверки: структурированных verified facts по запросу не найдено.",
+        "Проверенная цепочка: exact AcceptedFact отсутствует, поэтому основной вывод не сформирован.",
+    ]
+    if evidence_sources:
+        answer_lines.append("Навигационные источники найдены, но они не повышены до verified KG-фактов:")
+        for source in evidence_sources[:5]:
+            name = str(source.get("source_name") or source.get("filename") or source.get("title") or "источник")
+            page = source.get("page_start") or source.get("page")
+            page_label = f", стр. {page}" if page else ""
+            answer_lines.append(f"- {name}{page_label}")
+    else:
+        answer_lines.append("Релевантных источников для навигации также не найдено.")
+    diagnostics = {
+        **kg_diagnostics,
+        "selected_answer_mode": "strict_audit_no_verified_facts",
+        "retrieval_status": "no_exact_verified_facts",
+        "answer_is_verified": False,
+        "source_grounded_answer_used": False,
+        "semantic_fallback_executed": bool(evidence_sources),
+        "fallback_reason": fallback_reason,
+        "evidence_chunks_used_count": len(evidence_sources),
+        "accepted_facts_used_count": 0,
+        "typed_facts_found": 0,
+        "chunks_found_bm25": retrieval.get("chunks_found_bm25", 0),
+        "chunks_found_dense": retrieval.get("chunks_found_dense", 0),
+        "chunks_after_fusion": retrieval.get("chunks_after_fusion", 0),
+        "top_fused_chunks": retrieval.get("top_fused_chunks", []),
+        "evidence_candidates_before_filter": retrieval.get("evidence_candidates_before_filter"),
+        "evidence_candidates_after_filter": retrieval.get("evidence_candidates_after_filter", len(evidence_sources)),
+        "evidence_deduplicated_count": retrieval.get("evidence_deduplicated_count", 0),
+        "evidence_dropped_low_relevance_count": retrieval.get("evidence_dropped_low_relevance_count", 0),
+        "excluded_test_chunks_count": retrieval.get("excluded_test_chunks_count", 0),
+        "excluded_test_sources": retrieval.get("excluded_test_sources", []),
+        "retrieval_filtered_for_production": retrieval.get("retrieval_filtered_for_production", False),
+        "evidence_coverage_score": retrieval.get("evidence_coverage_score"),
+        "matched_evidence_anchors": retrieval.get("matched_evidence_anchors", []),
+        "missing_evidence_anchors": retrieval.get("missing_evidence_anchors", []),
+        "missing_structured_fact_types": list(missing_structured_fact_types or getattr(planned_constraints, "target_fact_types", []) or []),
+        "partial_reason": "strict audit: exact AcceptedFact отсутствует",
+    }
+    return {
+        "answer": "\n".join(answer_lines),
+        "status": "no_exact_match",
+        "answer_mode": "strict_audit_no_verified_facts",
+        "analytical_intent": "strict_audit",
+        "intent": ask_intent,
+        "answer_is_verified": False,
+        "source_grounded_answer_used": False,
+        "semantic_fallback_executed": bool(evidence_sources),
+        "fallback_reason": fallback_reason,
+        "evidence_chunks_used_count": len(evidence_sources),
+        "accepted_facts_used_count": 0,
+        "constraints": planned_constraints.model_dump() if hasattr(planned_constraints, "model_dump") else {"raw_question": question},
+        "facts": [],
+        "typed_facts": [],
+        "experiments": [],
+        "technical_objects": [],
+        "parts": [],
+        "parameters": [],
+        "standards": [],
+        "materials": [],
+        "requirements": [],
+        "equipment": [],
+        "laboratories": [],
+        "sources": evidence_sources,
+        "evidence": evidence_sources,
+        "gaps": [],
+        "data_gaps": [],
+        "partial_matches": {
+            "retrieval_status": "no_exact_verified_facts",
+            "why_not_verified": ["no exact AcceptedFact"],
+            "missing_structured_fact_types": diagnostics["missing_structured_fact_types"],
+        },
+        "decision_history": [],
+        "subgraph": {"nodes": [], "edges": []},
+        "retrieval": {
+            **retrieval,
+            "retrieval_status": "no_exact_verified_facts",
+            "answer_mode": "strict_audit_no_verified_facts",
+            "answer_is_verified": False,
+            "source_grounded_answer_used": False,
+            "semantic_fallback_executed": bool(evidence_sources),
+            "fallback_reason": fallback_reason,
+            "evidence_chunks_used_count": len(evidence_sources),
+            "accepted_facts_used_count": 0,
+            "typed_facts_found": 0,
+            "partial_reason": diagnostics["partial_reason"],
+        },
+        "llm": llm,
+        "diagnostics": diagnostics,
+    }
+
+
+def _filtered_source_grounded_sources(
+    *,
+    question: str,
+    planned_constraints: Any,
+    chunks: List[Chunk],
+    top_k: int,
+) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    if not chunks:
+        return [], {}
+    typed_query = TypedFactQuery.from_constraints(question, planned_constraints)
+    filtered_chunks, evidence_diagnostics = filter_source_grounded_chunks(
+        chunks,
+        typed_query,
+        top_k=max(1, min(len(chunks), top_k, 8)),
+    )
+    return [_source_for_chunk(chunk) for chunk in filtered_chunks], evidence_diagnostics
+
+
 def _source_grounded_fallback_from_query(
     *,
     question: str,
@@ -1125,14 +1275,19 @@ def _source_grounded_fallback_from_query(
     chunks = retrieval_engine.query(question, top_k=max(top_k, 8))
     if not chunks:
         return None
-    sources = [_source_for_chunk(chunk) for chunk in chunks[: max(1, min(len(chunks), top_k, 8))]]
+    sources, evidence_diagnostics = _filtered_source_grounded_sources(
+        question=question,
+        planned_constraints=planned_constraints,
+        chunks=chunks,
+        top_k=top_k,
+    )
     if not sources:
         return None
     return _source_grounded_payload(
         question=question,
         sources=sources,
         planned_constraints=planned_constraints,
-        retrieval={**retrieval_engine.stats(), **kg_diagnostics},
+        retrieval={**retrieval_engine.stats(), **kg_diagnostics, **evidence_diagnostics},
         kg_diagnostics=kg_diagnostics,
         llm=llm_client.status(),
         ask_intent=ask_intent,
@@ -1194,6 +1349,9 @@ async def health():
         "mistral_model": llm_status.get("mistral_model"),
         "mistral_api_key_configured": llm_status.get("mistral_api_key_configured"),
         "openrouter_api_key_configured": llm_status.get("openrouter_api_key_configured"),
+        "yandex_api_key_configured": llm_status.get("yandex_api_key_configured"),
+        "yandex_model_uri_configured": llm_status.get("yandex_model_uri_configured"),
+        "yandex_base_url": llm_status.get("yandex_base_url"),
         "llm_ready": llm_status.get("effective_ready"),
         "llm_last_error": llm_status.get("llm_last_error"),
         "llm_fallback_reason": llm_status.get("fallback_reason"),
@@ -4107,10 +4265,11 @@ async def ask(
     query_params_ignored = False
     if request is not None:
         query_params_ignored = bool(question or preset_id or top_k != 8)
+        effective_preset_id = RuntimePresetId.STRICT_AUDIT if request.strict_audit_mode is True else request.preset_id
         return await _ask_impl(
             question=request.question,
             top_k=request.top_k,
-            preset_id=request.preset_id,
+            preset_id=effective_preset_id,
             input_source="json_body",
             query_params_ignored=query_params_ignored,
         )
@@ -4137,7 +4296,7 @@ async def _ask_impl(
     understanding = _question_understanding(question)
     planned_constraints = query_planner.parse(question)
     if understanding["needs_clarification"]:
-        if _can_try_source_grounded_for_unclear(question, understanding):
+        if not preset.strict_audit_mode and _can_try_source_grounded_for_unclear(question, understanding):
             fallback = _source_grounded_fallback_from_query(
                 question=question,
                 top_k=top_k,
@@ -4221,6 +4380,24 @@ async def _ask_impl(
             TypedFactQuery.from_constraints(question, planned_constraints),
             top_k=max(top_k, 12),
         )
+        if preset.strict_audit_mode and typed_result.retrieval_status != "exact_facts_found":
+            typed_sources = [_source_for_chunk(chunk) for chunk in typed_result.fallback_chunks]
+            return _decorate_ask_response(
+                _strict_audit_no_verified_payload(
+                    question=question,
+                    sources=typed_sources,
+                    planned_constraints=planned_constraints,
+                    retrieval={**graph_retrieval_meta, **(typed_result.diagnostics or {})},
+                    kg_diagnostics=kg_diagnostics,
+                    llm=llm_client.status(),
+                    ask_intent=ask_intent,
+                    fallback_reason="strict_audit_requires_exact_accepted_fact",
+                    missing_structured_fact_types=list((typed_result.diagnostics or {}).get("missing_structured_fact_types") or []),
+                ),
+                preset_id=preset.preset_id,
+                input_source=input_source,
+                query_params_ignored=query_params_ignored,
+            )
         return _decorate_ask_response(
             build_typed_answer_payload(
                 question=question,
@@ -4406,6 +4583,38 @@ async def _ask_impl(
         # Keep at least one evidence source for exact constrained answers.
         sources = [_source_for_chunk(answer_extractions[0][0])]
     if not accepted_facts and sources and ask_intent == "experiment_lookup":
+        source_chunks = [chunk for chunk, _ in answer_extractions]
+        filtered_sources, evidence_diagnostics = _filtered_source_grounded_sources(
+            question=question,
+            planned_constraints=planned_constraints,
+            chunks=source_chunks,
+            top_k=top_k,
+        )
+        if filtered_sources:
+            sources = filtered_sources
+        if preset.strict_audit_mode:
+            return _decorate_ask_response(
+                _strict_audit_no_verified_payload(
+                    question=question,
+                    sources=sources,
+                    planned_constraints=planned_constraints,
+                    retrieval={
+                        **retrieval_engine.stats(),
+                        **kg_diagnostics,
+                        **evidence_diagnostics,
+                        "constraint_match": match_info,
+                        "query_rewrite": rewrite,
+                        "source_metadata_filter": source_metadata_filter,
+                    },
+                    kg_diagnostics=kg_diagnostics,
+                    llm=llm_client.status(),
+                    ask_intent=ask_intent,
+                    fallback_reason="strict_audit_requires_exact_accepted_fact",
+                ),
+                preset_id=preset.preset_id,
+                input_source=input_source,
+                query_params_ignored=query_params_ignored,
+            )
         return _decorate_ask_response(
             _source_grounded_payload(
                 question=question,
@@ -4414,6 +4623,7 @@ async def _ask_impl(
                 retrieval={
                     **retrieval_engine.stats(),
                     **kg_diagnostics,
+                    **evidence_diagnostics,
                     "constraint_match": match_info,
                     "query_rewrite": rewrite,
                     "source_metadata_filter": source_metadata_filter,

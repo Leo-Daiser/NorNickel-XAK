@@ -1,433 +1,416 @@
-# NorNickel-XAK — R&D Knowledge Graph
+# Credit Risk Scoring Service
 
-Система для хакатона: загрузка научно-технических документов, извлечение проверяемых фактов, построение knowledge graph и ответы на исследовательские вопросы с источниками/evidence.
+Production-like ML system for credit default risk scoring based on the **Home Credit Default Risk** dataset.
 
-Проект рассчитан на R&D-задачи в горно-металлургической и материаловедческой тематике: материалы, процессы, режимы, свойства, числовые параметры, оборудование, источники, выводы, противоречия и пробелы в данных.
-
-## Что умеет проект
-
-- Streamlit UI для загрузки документов и вопросов.
-- FastAPI backend с endpoint `/ask`.
-- Поддержка PDF, DOCX, PPTX, XLSX, CSV, HTML, TXT, MD.
-- Parsing/chunking документов и локальный каталог.
-- Детерминированное извлечение фактов.
-- Нормализация материалов, процессов, свойств, единиц и числовых значений.
-- Evidence/sources для найденных фактов.
-- Поиск противоречий и пробелов.
-- Опциональный Neo4j graph backend.
-- Опциональный Qdrant/vector backend.
-- Базовый режим без внешних LLM API-ключей.
-
-Рекомендуемый режим для локальной проверки — `economy_core`: BM25 + deterministic extraction + fallback/graph logic, без внешнего LLM и без локальной embedding-модели.
+Проект строится не как один ноутбук с моделью, а как инженерная ML-система с:
+- модульным `src/`
+- конфигами
+- PostgreSQL
+- FastAPI
+- Docker Compose
+- CLI-командами
+- тестами
+- воспроизводимой загрузкой и валидацией сырых данных
 
 ---
 
-## Быстрый запуск для проверяющих
+## Current status
 
-### 1. Требования
+Сейчас реализованы:
 
-Нужно установить:
+### Phase 0 — Foundation Layer
+- базовая структура репозитория
+- FastAPI сервис
+- health endpoint
+- PostgreSQL
+- SQLAlchemy ORM models
+- Docker / Docker Compose
+- CLI для инициализации БД
+- базовые тесты
 
-- Git;
-- Docker Desktop;
-- Docker Compose v2;
-- 4 GB+ свободной RAM для полного запуска с Neo4j и Qdrant.
+### Phase 1 — Raw Data Layer
+- конфиг данных через `configs/data.yaml`
+- загрузка сырых CSV
+- валидация схемы таблиц
+- проверка обязательных колонок
+- проверка пустых таблиц
+- проверка уникальных ключей
+- проверка foreign key relationships
+- data quality diagnostics для реального датасета
+- unit-тесты на raw data contracts
 
-Проверка:
+### In progress
+- Base Feature Layer
+- application-level feature engineering
+- построение feature dataset для train/test
+- model training pipeline
 
-```powershell
-docker --version
-docker compose version
+---
+
+## Project goal
+
+Построить сервис скоринга кредитного риска, который на вход принимает данные клиента, а на выходе возвращает:
+- вероятность дефолта
+- risk band
+- reason codes / explainability fields
+- версию модели
+- логирование результатов в БД
+
+---
+
+## Dataset
+
+Используется датасет **Home Credit Default Risk**.
+
+На текущем этапе задействованы:
+- `application_train.csv`
+- `application_test.csv`
+- `bureau.csv`
+- `bureau_balance.csv`
+
+Ожидаемая структура данных:
+
+```text
+/data/
+└── raw/
+    └── home_credit/
+        ├── application_train.csv
+        ├── application_test.csv
+        ├── bureau.csv
+        ├── bureau_balance.csv
 ```
 
-### 2. Скачать проект
+---
 
-```powershell
-git clone https://github.com/Leo-Daiser/NorNickel-XAK.git
-cd NorNickel-XAK
+## Project structure
+
+```text
+credit-risk-scoring/
+├── src/
+│   ├── api/
+│   │   ├── main.py
+│   │   ├── routes.py
+│   │   └── schemas.py
+│   ├── core/
+│   │   ├── config.py
+│   │   └── logger.py
+│   ├── data/
+│   │   ├── load_raw.py
+│   │   └── validate_schema.py
+│   ├── db/
+│   │   ├── base.py
+│   │   ├── models.py
+│   │   ├── session.py
+│   │   └── init_db.py
+│   ├── features/
+│   │   └── __init__.py
+│   ├── models/
+│   │   └── __init__.py
+│   ├── services/
+│   │   └── health.py
+│   ├── utils/
+│   │   └── paths.py
+│   └── cli.py
+├── configs/
+│   ├── app.yaml
+│   ├── db.yaml
+│   ├── train.yaml
+│   └── data.yaml
+├── data/
+│   ├── raw/
+│   ├── interim/
+│   └── processed/
+├── notebooks/
+├── sql/
+│   └── init.sql
+├── tests/
+│   ├── conftest.py
+│   ├── test_config.py
+│   ├── test_health.py
+│   ├── test_load_raw.py
+│   └── test_validate_schema.py
+├── artifacts/
+│   ├── models/
+│   ├── metrics/
+│   └── reports/
+├── Dockerfile
+├── docker-compose.yml
+├── Makefile
+├── requirements.txt
+└── README.md
 ```
 
-### 3. Создать `.env` и локальные runtime-папки
+---
 
-Это обязательный шаг. Без этих папок Docker Compose на части окружений может не поднять сервисы из-за bind-mount путей.
+## Tech stack
 
-PowerShell:
+- Python 3.11
+- FastAPI
+- Uvicorn
+- PostgreSQL
+- SQLAlchemy
+- Pydantic
+- pandas
+- PyYAML
+- pytest
+- Docker
+- Docker Compose
 
-```powershell
-Copy-Item .env.example .env -Force
-New-Item -ItemType Directory -Force data, artifacts, models, data_storage, volumes, volumes\neo4j, volumes\qdrant | Out-Null
-```
+---
 
-Linux/macOS/Git Bash:
+## Implemented functionality
+
+### API
+- `GET /health` — healthcheck endpoint
+
+### Database
+Сейчас в PostgreSQL заложены таблицы:
+- `model_registry`
+- `scoring_requests`
+- `scoring_predictions`
+- `feature_stats`
+
+### CLI
+Поддерживаются команды:
+- `python -m src.cli init-db`
+- `python -m src.cli validate-raw`
+
+### Raw data validation
+Проверяется:
+- наличие файлов
+- наличие обязательных колонок
+- пустые таблицы
+- уникальность ключей
+- связь `bureau_balance.SK_ID_BUREAU -> bureau.SK_ID_BUREAU`
+
+---
+
+## Important note about raw data validation
+
+На реальном датасете Home Credit обнаруживается data quality anomaly:
+
+- в `bureau_balance` есть значения `SK_ID_BUREAU`, которых нет в `bureau`
+
+Поэтому raw validation работает в двух режимах:
+
+- **strict mode** — для unit-тестов, нарушение FK считается ошибкой
+- **report mode** — для CLI на реальных данных, нарушение логируется в отчёт, но не валит весь пайплайн
+
+Это сделано намеренно: проверка остаётся, но проект не ломается из-за особенностей исходного датасета.
+
+---
+
+## Installation
+
+### 1. Clone repository
 
 ```bash
-cp .env.example .env
-mkdir -p data artifacts models data_storage volumes/neo4j volumes/qdrant
+git clone https://github.com/Leo-Daiser/Credit-Risk-Scoring-Service.git
+cd Credit-Risk-Scoring-Service
 ```
 
-Для первого запуска реальные API-ключи не нужны. По умолчанию используется локальный режим `economy_core` без внешнего LLM.
+### 2. Create `.env`
 
-### 4. Запустить сервисы
+Пример:
 
-Полный локальный запуск с UI, API, Neo4j и Qdrant:
+```env
+POSTGRES_USER=credit_user
+POSTGRES_PASSWORD=credit_pass
+POSTGRES_DB=credit_risk
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
 
-```powershell
-docker compose --env-file .env --profile full up -d --build
+APP_HOST=0.0.0.0
+APP_PORT=8000
+APP_NAME=Credit Risk Scoring Service
+APP_ENV=dev
 ```
 
-Первый build может занять несколько минут.
-
-Проверить все контейнеры, включая остановленные:
-
-```powershell
-docker compose --profile full ps -a
-```
-
-Ожидаемые сервисы:
-
-```text
-api
-ui
-neo4j
-qdrant
-```
-
-Если какой-то контейнер в статусе `Exited` или `Restarting`, сразу смотрите логи:
-
-```powershell
-docker compose --profile full logs --tail=200 api ui neo4j qdrant
-```
-
-Адреса после успешного запуска:
-
-```text
-Streamlit UI:  http://localhost:8501
-API docs:      http://localhost:8000/docs
-API health:    http://localhost:8000/health
-Neo4j Browser: http://localhost:7474
-Qdrant API:    http://localhost:6333
-```
-
-Neo4j Browser:
-
-```text
-login:    neo4j
-password: hackathon_password
-```
-
-### 5. Проверить запуск
-
-PowerShell:
-
-```powershell
-Invoke-RestMethod http://localhost:8000/health
-Invoke-WebRequest http://localhost:8501/_stcore/health
-Start-Process http://localhost:8501
-```
-
-Linux/macOS/Git Bash:
+### 3. Install dependencies locally
 
 ```bash
-curl http://localhost:8000/health
-curl http://localhost:8501/_stcore/health
-```
-
-Если UI открылся на `http://localhost:8501`, проект готов к ручному тестированию.
-
----
-
-## Данные
-
-Исходный датасет хакатона **не включен** в репозиторий.
-
-Для локального запуска с полным корпусом нужно распаковать выданный организаторами датасет в папку:
-
-```text
-data_storage/
-```
-
-Ожидаемая структура:
-
-```text
-data_storage/
-  Доклады/
-  Журналы/
-  Материалы конференций/
-  Обзоры/
-  Статьи/
-```
-
-Папка `data_storage/` намеренно исключена из Git, потому что содержит исходные данные хакатона. В Docker Compose она монтируется внутрь API-контейнера как read-only путь `/code/hackathon_project/data_storage`.
-
-Для быстрого теста без приватного датасета можно использовать тестовые документы из:
-
-```text
-evaluation/test_corpus/
+pip install -r requirements.txt
 ```
 
 ---
 
-## Как загрузить документы
+## Run with Docker Compose
 
-### Вариант A — через UI
-
-1. Открыть `http://localhost:8501`.
-2. Загрузить документы через блок загрузки файлов.
-3. После загрузки обновить граф/индексы в UI.
-4. Задать вопрос.
-5. Проверить ответ, источники, evidence, диагностику и граф.
-
-### Вариант B — загрузить часть реального корпуса скриптом
-
-Сначала распакуйте датасет в `data_storage/`, затем запустите:
-
-```powershell
-docker compose --profile full exec api python scripts/stage_real_corpus_demo.py --input /code/hackathon_project/data_storage --count 25 --reset --sync-neo4j
+```bash
+docker compose up --build
 ```
 
-Dry-run без загрузки:
-
-```powershell
-docker compose --profile full exec api python scripts/stage_real_corpus_demo.py --input /code/hackathon_project/data_storage --count 25 --dry-run
-```
-
-Скрипт загружает файлы по одному, обновляет граф после загрузки и сохраняет отчет в `artifacts/`.
+После запуска:
+- API: `http://localhost:8000`
+- Healthcheck: `http://localhost:8000/health`
 
 ---
 
-## Примеры вопросов
+## Local development
 
-Для тестового корпуса:
+### Run API locally
 
-```text
-Что делали по сплаву ВТ6 при отжиге и какой был эффект на прочность?
-Сравни ВТ6 и 7075-T6 по прочности.
-Какие есть противоречия или неоднородные данные по прочности?
-Какие пробелы в данных найдены?
-Найди evidence по прочности 7075-T6 после aging.
+```bash
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Для полного корпуса хакатона:
+### Initialize database
 
-```text
-Какие материалы, процессы и свойства встречаются в загруженных источниках?
-Какие методы обессоливания воды подходят при сульфатах и хлоридах 200–300 мг/л?
-Какие решения циркуляции католита при электроэкстракции никеля описаны в источниках?
-Покажи эксперименты по распределению Au, Ag и МПГ между штейном и шлаком.
-Какие способы закачки шахтных вод применялись в России и за рубежом?
-Какие пробелы в данных найдены в активном корпусе?
-Есть ли противоречия или неоднородные данные по численным параметрам?
+```bash
+python -m src.cli init-db
+```
+
+### Validate raw data
+
+```bash
+python -m src.cli validate-raw
 ```
 
 ---
 
-## Полезные команды
+## Tests
 
-Остановить проект:
+Запуск всех тестов:
 
-```powershell
-docker compose --profile full down
+```bash
+pytest -q
 ```
 
-Перезапустить без пересборки:
+Тесты покрывают:
+- config loading
+- health endpoint
+- raw data config loading
+- table path resolution
+- raw CSV loading
+- required columns validation
+- empty table detection
+- unique key validation
+- foreign key validation
+- end-to-end raw schema validation on synthetic mini-tables
 
-```powershell
-docker compose --env-file .env --profile full up -d
-```
+---
 
-Пересобрать полностью:
+## API
 
-```powershell
-docker compose --env-file .env --profile full up -d --build
-```
+### `GET /health`
 
-Логи:
+Response example:
 
-```powershell
-docker compose --profile full logs api --tail=100
-docker compose --profile full logs ui --tail=100
-docker compose --profile full logs neo4j --tail=100
-docker compose --profile full logs qdrant --tail=100
+```json
+{
+  "status": "ok",
+  "service": "credit-risk-scoring"
+}
 ```
 
 ---
 
-## Troubleshooting
+## Configuration
 
-### Контейнеры не запустились после `docker compose --profile full up -d --build`
+Основные конфиги лежат в `configs/`.
 
-1. Проверьте, что `.env` и runtime-папки созданы:
-
-```powershell
-Test-Path .env
-Test-Path data
-Test-Path models
-Test-Path data_storage
-Test-Path volumes\neo4j
-Test-Path volumes\qdrant
-```
-
-2. Если чего-то нет, создайте заново:
-
-```powershell
-Copy-Item .env.example .env -Force
-New-Item -ItemType Directory -Force data, artifacts, models, data_storage, volumes, volumes\neo4j, volumes\qdrant | Out-Null
-```
-
-3. Запустите с явным `.env`:
-
-```powershell
-docker compose --env-file .env --profile full up -d --build
-```
-
-4. Посмотрите статусы и логи:
-
-```powershell
-docker compose --profile full ps -a
-docker compose --profile full logs --tail=200 api ui neo4j qdrant
-```
-
-### UI не открывается
-
-```powershell
-docker compose --profile full ps -a
-docker compose --profile full logs ui --tail=100
-docker compose --profile full exec ui python -c "import urllib.request; print(urllib.request.urlopen('http://api:8000/health').read().decode()[:500])"
-```
-
-### API не открывается
-
-```powershell
-docker compose --profile full ps -a
-docker compose --profile full logs api --tail=100
-Invoke-RestMethod http://localhost:8000/health
-```
-
-### Neo4j не подключается
-
-Для первого запуска это не критично: проект умеет работать через fallback.
-
-Проверка:
-
-```powershell
-docker compose --profile full exec api python scripts/check_neo4j_connection.py
-```
-
-Параметры локального Neo4j:
-
-```text
-NEO4J_DOCKER_URI=bolt://neo4j:7687
-NEO4J_URI=bolt://neo4j:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=hackathon_password
-NEO4J_DATABASE=neo4j
-```
-
-### Загрузка файлов идет долго
-
-Это нормально для больших PDF, DOCX и XLSX. Если файл является сканом без текстового слоя, ожидаемый статус — `ocr_required`; это не crash, а диагностика необходимости OCR-профиля.
+### `configs/data.yaml`
+Описывает:
+- директорию с raw data
+- список используемых таблиц
+- обязательные колонки
+- unique keys
 
 ---
 
-## Режимы работы
+## Database schema
 
-### economy_core
+### `model_registry`
+Хранение версий моделей:
+- model version
+- model type
+- artifact path
+- metrics
 
-Режим для первого запуска и локальной проверки:
+### `scoring_requests`
+Логирование входящих inference requests.
 
-```text
-без внешнего LLM
-без локальных dense embeddings
-BM25 retrieval
-deterministic extraction
-template/fallback answer
-```
+### `scoring_predictions`
+Хранение результатов скоринга.
 
-### balanced_hybrid
-
-Гибридный retrieval с локальными embeddings. Требует больше ресурсов и локальную модель в `models/` или доступную загрузку модели.
-
-В `.env`:
-
-```text
-RUNTIME_PROFILE=balanced_hybrid
-```
-
-После изменения:
-
-```powershell
-docker compose --env-file .env --profile full up -d --build
-```
-
-Если embeddings недоступны, система должна деградировать в BM25/fallback, а причина будет видна в `/health`.
-
-### economy_guarded_llm / quality_full
-
-Опциональные режимы с LLM polish. Для локального запуска организаторам они не обязательны. Реальные ключи нельзя коммитить.
-
-Важно: LLM не является источником истины. Факты извлекаются и проверяются отдельно, а LLM используется только как опциональный слой формулировки ответа.
+### `feature_stats`
+Статистики признаков для мониторинга и контроля качества.
 
 ---
 
-## Структура проекта
+## Development roadmap
 
-```text
-app/          основной код API, UI, retrieval, extraction, graph, answering
-docs/         архитектура, runbook, отчеты по готовности
-evaluation/   eval-скрипты и тестовый корпус
-tests/        pytest-тесты
-scripts/      служебные скрипты
-requirements*.txt  зависимости для разных режимов
-```
+### Phase 2 — Base Feature Layer
+- application-level cleaning
+- derived features from application tables
+- train/test feature alignment
+- save processed datasets
 
-Runtime-папки, которые создаются локально и не хранятся в Git:
+### Phase 3 — Historical Aggregation Layer
+- bureau aggregations
+- bureau_balance aggregations
+- merge historical features to applicant level
 
-```text
-data/
-artifacts/
-volumes/
-models/
-data_storage/
-```
+### Phase 4 — Modeling Layer
+- Logistic Regression baseline
+- CatBoost challenger
+- offline evaluation
+- artifact saving
 
----
+### Phase 5 — Explainability and business layer
+- calibration
+- threshold tuning
+- SHAP report
+- business metrics
 
-## Что нельзя коммитить
+### Phase 6 — Serving layer
+- `POST /score`
+- `GET /model_info`
+- inference logging
+- model versioning
 
-```text
-.env
-data_storage/
-data/
-volumes/
-artifacts/
-models/
-__pycache__/
-*.pyc
-*.sqlite3
-*.log
-*.zip
-```
-
-Проверка перед коммитом:
-
-```powershell
-git status --short
-git diff --cached --name-only
-```
+### Phase 7+
+- batch scoring
+- drift monitoring
+- advanced feature pipelines
+- champion / challenger logic
 
 ---
 
-## Краткая архитектура
+## Engineering principles
 
-```text
-Документы
-  → parsing / chunking
-  → deterministic extraction
-  → canonical facts + evidence
-  → conflict / gap detection
-  → local catalog + optional Neo4j graph
-  → retrieval / graph query
-  → guarded answer + sources + graph UI
-```
+Этот проект строится с упором на:
+- reproducibility
+- modular code
+- explicit data contracts
+- separation between notebooks and production code
+- testable preprocessing logic
+- production-minded ML development
 
-Главный принцип: LLM не пишет финальные факты напрямую в граф. Факты должны иметь источник, evidence и проходить проверку.
+---
+
+## What is intentionally not done yet
+
+На текущем этапе **ещё не реализованы**:
+- feature engineering из historical tables
+- train/validation split
+- training pipeline
+- model serving for `/score`
+- explainability output
+- drift monitoring
+- batch inference
+
+Это будет добавляться по фазам.
+
+---
+
+## Author
+
+**Leo Daiser**  
+GitHub: [Leo-Daiser](https://github.com/Leo-Daiser)
+
+---
+
+## License
+
+Проект создаётся в учебно-прикладных целях.

@@ -131,8 +131,17 @@ def preset_id_for_title(title: str | None) -> str:
     return PRESET_TITLE_TO_ID.get(str(title or DEFAULT_PRESET_TITLE), DEFAULT_PRESET_ID)
 
 
+def strict_audit_mode_for_preset(preset_id: str | None) -> bool:
+    return str(preset_id or DEFAULT_PRESET_ID) == "strict_audit"
+
+
 def build_ask_payload(question: str, top_k: int = 12, preset_id: str = DEFAULT_PRESET_ID) -> dict[str, Any]:
-    return {"question": question, "top_k": top_k, "preset_id": preset_id}
+    return {
+        "question": question,
+        "top_k": top_k,
+        "preset_id": preset_id,
+        "strict_audit_mode": strict_audit_mode_for_preset(preset_id),
+    }
 
 
 def ask_api(question: str, top_k: int = 12, preset_id: str = DEFAULT_PRESET_ID) -> dict[str, Any]:
@@ -823,6 +832,8 @@ def _render_details(payload: dict[str, Any]) -> None:
                 "selected_preset_from_ui": st.session_state.get("last_selected_preset_from_ui"),
                 "request_payload": st.session_state.get("last_request_payload"),
                 "response_diagnostics_preset_id": response_diagnostics.get("preset_id"),
+                "effective_runtime_mode": response_diagnostics.get("effective_runtime_mode"),
+                "strict_audit_mode": (response_diagnostics.get("effective_runtime_mode") or {}).get("strict_audit_mode"),
             }
         )
         st.json(diagnostics_to_safe_summary(payload))

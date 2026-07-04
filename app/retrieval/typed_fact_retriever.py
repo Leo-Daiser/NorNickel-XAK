@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import os
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -133,14 +134,14 @@ class TypedFactRetriever:
                 },
             )
 
-        chunks = self._fallback_chunks(query, top_k=top_k)
+        chunks, evidence_diagnostics = self._fallback_chunks(query, top_k=top_k)
         retrieval_stats = self._retrieval_stats()
         return TypedFactSearchResult(
             query=query,
             accepted_facts=[],
             evidence=[],
             fallback_chunks=chunks,
-            missing_filters=missing or relaxed_missing,
+            missing_filters=[] if chunks else (missing or relaxed_missing),
             retrieval_status="chunks_only_no_structured_facts" if chunks else "no_relevant_sources",
             diagnostics={
                 **base_diagnostics,
@@ -148,6 +149,7 @@ class TypedFactRetriever:
                 "chunks_found_bm25": retrieval_stats.get("chunks_found_bm25", 0),
                 "chunks_found_dense": retrieval_stats.get("chunks_found_dense", 0),
                 "chunks_after_fusion": retrieval_stats.get("chunks_after_fusion", 0),
+                **evidence_diagnostics,
                 "effective_retrieval_mode": retrieval_stats.get("effective_retrieval_mode"),
                 "degraded_reason": retrieval_stats.get("degraded_reason") or retrieval_stats.get("hybrid_degraded_reason", ""),
                 "embedding_status": retrieval_stats.get("embedding_status", {}),
@@ -155,9 +157,9 @@ class TypedFactRetriever:
                 "missing_structured_fact_types": query.target_fact_types,
                 "numeric_constraints_matched": 0,
                 "matched_required_anchors": [],
-                "missing_required_anchors": _required_anchor_labels(query) or missing or relaxed_missing,
+                "missing_required_anchors": [] if chunks else (_required_anchor_labels(query) or missing or relaxed_missing),
                 "matched_optional_anchors": [],
-                "coverage_score": 0.0,
+                "coverage_score": None if chunks else 0.0,
                 "exact_match": False,
                 "relaxed_match": False,
                 "chunk_retrieval_executed": True,
@@ -179,12 +181,12 @@ class TypedFactRetriever:
         except TypeError:
             return list(finder(limit=limit))
 
-    def _fallback_chunks(self, query: TypedFactQuery, *, top_k: int) -> list[Chunk]:
+    def _fallback_chunks(self, query: TypedFactQuery, *, top_k: int) -> tuple[list[Chunk], dict[str, Any]]:
         if self.retrieval_engine is None or not hasattr(self.retrieval_engine, "query"):
-            return []
+            return [], source_grounded_filter_diagnostics(query, [], [])
         retrieval_query = _expanded_typed_query(query)
-        chunks = list(self.retrieval_engine.query(retrieval_query, top_k=max(top_k * 2, 12)))
-        return _rerank_chunks(chunks, query)[:top_k]
+        chunks = list(self.retrieval_engine.query(retrieval_query, top_k=max(top_k * 4, 24)))
+        return filter_source_grounded_chunks(chunks, query, top_k=top_k)
 
     def _retrieval_stats(self) -> dict[str, Any]:
         stats = getattr(self.retrieval_engine, "stats", None)
@@ -688,6 +690,150 @@ def _rerank_chunks(chunks: list[Chunk], query: TypedFactQuery) -> list[Chunk]:
     ]
 
 
+TEST_SOURCE_PATTERNS = [
+    "kg ui smoke",
+    "kg_ui_smoke",
+    "ui smoke",
+    "smoke",
+    "test fixture",
+    "тестовый технический документ",
+]
+
+DOMAIN_ANCHOR_GROUPS: dict[str, list[str]] = {
+    "mine": ["рудник", "рудник", "шахт", "подзем", "глубок", "mine", "mining", "underground", "kidd", "mponeng"],
+    "cooling": ["охлажд", "холодиль", "чиллер", "лед", "холодный забой", "bac", "mwr", "cool", "cooling", "chiller", "refrigeration", "ice", "cold stope"],
+    "heat": ["тепл", "самосжат", "геотерм", "heat", "thermal", "autocompression", "geothermal"],
+    "ventilation": ["вентиляц", "воздух", "ventilation", "airflow"],
+    "process_solution": ["метод", "способ", "технолог", "схем", "систем", "решен", "method", "technology", "system", "solution"],
+}
+
+QUERY_STOPWORDS = {
+    "какие", "какой", "какая", "какое", "как", "почему", "что", "для", "при", "или", "это", "этот",
+    "этого", "описаны", "применяются", "используется", "работает", "основные", "возникают", "документе",
+    "каковы", "какими", "where", "what", "which", "how", "why", "the", "and", "with", "from", "that",
+}
+
+
+def filter_source_grounded_chunks(chunks: list[Chunk], query: TypedFactQuery, *, top_k: int) -> tuple[list[Chunk], dict[str, Any]]:
+    """Deduplicate and production-filter chunks used as source-grounded evidence."""
+
+    before = len(chunks)
+    production_filter = not _bool_env("RETRIEVAL_INCLUDE_TEST_SOURCES", False)
+    deduped: list[Chunk] = []
+    seen_chunks: set[tuple[str, str]] = set()
+    deduplicated_count = 0
+    excluded_test_count = 0
+    excluded_sources: set[str] = set()
+    for chunk in chunks:
+        key = (str(chunk.doc_id or ""), str(chunk.chunk_id or ""))
+        if key in seen_chunks:
+            deduplicated_count += 1
+            continue
+        seen_chunks.add(key)
+        if production_filter and _is_test_or_smoke_chunk(chunk):
+            excluded_test_count += 1
+            excluded_sources.add(_chunk_source_name(chunk))
+            continue
+        deduped.append(chunk)
+
+    profile = _evidence_anchor_profile(query)
+    scored: list[tuple[float, Chunk, dict[str, Any]]] = []
+    dropped_low = 0
+    matched_anchors: set[str] = set()
+    for chunk in deduped:
+        score, report = _evidence_chunk_score(chunk, query, profile)
+        if not report["passes"]:
+            dropped_low += 1
+            continue
+        matched_anchors.update(report["matched_anchors"])
+        scored.append((score, chunk, report))
+    scored.sort(key=lambda item: item[0], reverse=True)
+
+    if scored:
+        source_totals: dict[str, float] = {}
+        source_max: dict[str, float] = {}
+        source_reports: dict[str, list[dict[str, Any]]] = {}
+        for score, chunk, report in scored:
+            source_name = _chunk_source_name(chunk)
+            source_totals[source_name] = source_totals.get(source_name, 0.0) + score
+            source_max[source_name] = max(source_max.get(source_name, 0.0), score)
+            source_reports.setdefault(source_name, []).append(report)
+        best_source = max(source_totals, key=source_totals.get)
+        best_total = source_totals.get(best_source, 0.0)
+        best_max = max(source_max.values(), default=0.0)
+        required_labels = set(profile.get("required_anchor_labels") or [])
+        best_source_anchors = {
+            anchor
+            for report in source_reports.get(best_source, [])
+            for anchor in report.get("matched_anchors", [])
+        }
+        if len(source_reports.get(best_source, [])) >= 2 and (not required_labels or required_labels.issubset(best_source_anchors)):
+            eligible_sources = {best_source}
+        else:
+            eligible_sources = {
+                source
+                for source, total in source_totals.items()
+                if total >= max(1.0, best_total * 0.55) or source_max.get(source, 0.0) >= max(1.0, best_max * 0.9)
+            }
+        eligible_scored = [item for item in scored if _chunk_source_name(item[1]) in eligible_sources]
+        dropped_low += max(0, len(scored) - len(eligible_scored))
+        scored = eligible_scored
+
+    selected: list[Chunk] = []
+    per_source_counts: dict[str, int] = {}
+    max_per_source = max(3, max(1, top_k) // 2)
+    for _, chunk, _ in scored:
+        source_name = _chunk_source_name(chunk)
+        if per_source_counts.get(source_name, 0) >= max_per_source:
+            continue
+        selected.append(chunk)
+        per_source_counts[source_name] = per_source_counts.get(source_name, 0) + 1
+        if len(selected) >= top_k:
+            break
+
+    diagnostics = source_grounded_filter_diagnostics(query, chunks, selected)
+    diagnostics.update(
+        {
+            "evidence_candidates_before_filter": before,
+            "evidence_candidates_after_filter": len(selected),
+            "evidence_deduplicated_count": deduplicated_count,
+            "evidence_dropped_low_relevance_count": dropped_low,
+            "excluded_test_chunks_count": excluded_test_count,
+            "excluded_test_sources": sorted(item for item in excluded_sources if item),
+            "retrieval_filtered_for_production": production_filter,
+            "evidence_source_groups_count": len(per_source_counts),
+        }
+    )
+    all_required = set(profile["required_anchor_labels"])
+    matched_required = {item for item in matched_anchors if item in all_required}
+    diagnostics["matched_evidence_anchors"] = sorted(matched_required)
+    diagnostics["missing_evidence_anchors"] = sorted(all_required - matched_required)
+    diagnostics["evidence_coverage_score"] = round(len(matched_required) / max(1, len(all_required)), 4) if all_required else 1.0
+    return selected, diagnostics
+
+
+def source_grounded_filter_diagnostics(query: TypedFactQuery, chunks_before: list[Chunk], chunks_after: list[Chunk]) -> dict[str, Any]:
+    profile = _evidence_anchor_profile(query)
+    matched: set[str] = set()
+    for chunk in chunks_after:
+        _, report = _evidence_chunk_score(chunk, query, profile)
+        matched.update(report["matched_anchors"])
+    required = set(profile["required_anchor_labels"])
+    matched_required = {item for item in matched if item in required}
+    return {
+        "evidence_candidates_before_filter": len(chunks_before),
+        "evidence_candidates_after_filter": len(chunks_after),
+        "evidence_deduplicated_count": 0,
+        "evidence_dropped_low_relevance_count": 0,
+        "excluded_test_chunks_count": 0,
+        "excluded_test_sources": [],
+        "retrieval_filtered_for_production": not _bool_env("RETRIEVAL_INCLUDE_TEST_SOURCES", False),
+        "matched_evidence_anchors": sorted(matched_required),
+        "missing_evidence_anchors": sorted(required - matched_required),
+        "evidence_coverage_score": round(len(matched_required) / max(1, len(required)), 4) if required else 1.0,
+    }
+
+
 def _chunk_relevance_boost(chunk: Chunk, query: TypedFactQuery) -> float:
     text = normalize_text(" ".join([chunk.text or "", str((chunk.metadata or {}).get("source_name") or ""), chunk.section_path or ""]))
     score = 0.0
@@ -710,3 +856,97 @@ def _chunk_relevance_boost(chunk: Chunk, query: TypedFactQuery) -> float:
         if unit and unit in text:
             score += 1.0
     return score
+
+
+def _evidence_anchor_profile(query: TypedFactQuery) -> dict[str, Any]:
+    query_text = _loose_norm(_expanded_typed_query(query))
+    active_groups: dict[str, list[str]] = {}
+    for group, terms in DOMAIN_ANCHOR_GROUPS.items():
+        if any(_loose_norm(term) in query_text for term in terms):
+            active_groups[group] = terms
+    words = [
+        item
+        for item in re.findall(r"[a-zа-яё0-9]{4,}", query_text, flags=re.IGNORECASE)
+        if item not in QUERY_STOPWORDS and not item.isdigit()
+    ]
+    required_labels: list[str] = []
+    required_labels.extend(active_groups.keys())
+    for term in query.materials + query.processes + query.properties + query.equipment + query.geography:
+        norm = _loose_norm(term)
+        if norm and norm not in required_labels:
+            required_labels.append(norm)
+    if not required_labels:
+        required_labels.extend(words[:5])
+    return {
+        "query_text": query_text,
+        "active_groups": active_groups,
+        "query_words": list(dict.fromkeys(words)),
+        "required_anchor_labels": list(dict.fromkeys(required_labels)),
+    }
+
+
+def _evidence_chunk_score(chunk: Chunk, query: TypedFactQuery, profile: dict[str, Any]) -> tuple[float, dict[str, Any]]:
+    text = _loose_norm(" ".join([chunk.text or "", chunk.section_path or "", _chunk_source_name(chunk)]))
+    matched_groups: set[str] = set()
+    for group, terms in (profile.get("active_groups") or {}).items():
+        if any(_loose_norm(term) in text for term in terms):
+            matched_groups.add(group)
+    query_words = list(profile.get("query_words") or [])
+    matched_words = {word for word in query_words if len(word) >= 4 and word in text}
+    active_groups = dict(profile.get("active_groups") or {})
+    active_group_count = len(active_groups)
+    # Generic solution words ("method", "system", "technology") should boost
+    # already relevant evidence, but must not make an unrelated technical chunk
+    # pass for a specific domain question such as deep-mine cooling.
+    essential_groups = [group for group in active_groups if group != "process_solution"]
+    if len(essential_groups) >= 2:
+        missing_essential = [group for group in essential_groups if group not in matched_groups]
+        if missing_essential:
+            return 0.0, {"passes": False, "matched_anchors": sorted(matched_groups), "matched_words": sorted(matched_words)}
+    required_group_matches = min(2, active_group_count) if active_group_count >= 2 else active_group_count
+    if active_group_count and len(matched_groups) < required_group_matches:
+        return 0.0, {"passes": False, "matched_anchors": sorted(matched_groups), "matched_words": sorted(matched_words)}
+    if not active_group_count and query_words and not matched_words:
+        return 0.0, {"passes": False, "matched_anchors": [], "matched_words": []}
+    score = 5.0 * len(matched_groups) + 0.35 * len(matched_words) + _chunk_relevance_boost(chunk, query)
+    source = _loose_norm(_chunk_source_name(chunk))
+    if "глубокие рудники" in source:
+        score += 1.0
+    return score, {
+        "passes": True,
+        "matched_anchors": sorted(matched_groups | {word for word in matched_words if word in profile.get("required_anchor_labels", [])}),
+        "matched_words": sorted(matched_words),
+    }
+
+
+def _is_test_or_smoke_chunk(chunk: Chunk) -> bool:
+    metadata = chunk.metadata or {}
+    haystack = _loose_norm(
+        " ".join(
+            str(value or "")
+            for value in [
+                metadata.get("source_name"),
+                metadata.get("source_title"),
+                metadata.get("filename"),
+                chunk.text[:500],
+            ]
+        )
+    )
+    return any(_loose_norm(pattern) in haystack for pattern in TEST_SOURCE_PATTERNS)
+
+
+def _chunk_source_name(chunk: Chunk) -> str:
+    metadata = chunk.metadata or {}
+    return str(metadata.get("source_name") or metadata.get("source_title") or metadata.get("filename") or chunk.doc_id or "")
+
+
+def _loose_norm(value: Any) -> str:
+    text = normalize_text(str(value or "")).replace("_", " ")
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _bool_env(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None or value.strip() == "":
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}

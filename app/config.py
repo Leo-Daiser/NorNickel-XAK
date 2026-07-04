@@ -89,6 +89,10 @@ try:  # Pydantic v2 path
         openrouter_api_key: str = Field("", validation_alias="OPENROUTER_API_KEY")
         openrouter_base_url: str = Field("https://openrouter.ai/api/v1", validation_alias="OPENROUTER_BASE_URL")
         openrouter_model: str = Field("", validation_alias="OPENROUTER_MODEL")
+        yandex_api_key: str = Field("", validation_alias="YANDEX_API_KEY")
+        yandex_folder_id: str = Field("", validation_alias="YANDEX_FOLDER_ID")
+        yandex_model_uri: str = Field("", validation_alias="YANDEX_MODEL_URI")
+        yandex_base_url: str = Field("https://ai.api.cloud.yandex.net/v1", validation_alias="YANDEX_BASE_URL")
 
         ingest_url_allow_private: bool = Field(False, validation_alias="INGEST_URL_ALLOW_PRIVATE")
         ingest_url_max_bytes: int = Field(10_485_760, validation_alias="INGEST_URL_MAX_BYTES")
@@ -165,6 +169,10 @@ except Exception:  # pragma: no cover - fallback for very small environments
         openrouter_api_key: str = os.getenv("OPENROUTER_API_KEY", "")
         openrouter_base_url: str = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
         openrouter_model: str = os.getenv("OPENROUTER_MODEL", "")
+        yandex_api_key: str = os.getenv("YANDEX_API_KEY", "")
+        yandex_folder_id: str = os.getenv("YANDEX_FOLDER_ID", "")
+        yandex_model_uri: str = os.getenv("YANDEX_MODEL_URI", "")
+        yandex_base_url: str = os.getenv("YANDEX_BASE_URL", "https://ai.api.cloud.yandex.net/v1")
 
         ingest_url_allow_private: bool = os.getenv("INGEST_URL_ALLOW_PRIVATE", "false").lower() in {"1", "true", "yes"}
         ingest_url_max_bytes: int = int(os.getenv("INGEST_URL_MAX_BYTES", "10485760"))

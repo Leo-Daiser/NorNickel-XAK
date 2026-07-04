@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import math
+import os
 import re
 import html
 from datetime import datetime, timezone
+from io import BytesIO
+from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
@@ -229,12 +232,12 @@ def build_report_markdown(report: dict[str, Any]) -> str:
 
 
 def build_answer_pdf_export(payload: dict[str, Any], *, question: str | None = None, generated_at: datetime | None = None) -> bytes:
-    """Build a small dependency-free PDF report from the normalized report model."""
+    """Build a Unicode visual PDF report from the normalized report model."""
 
     report = build_answer_report_model(payload, question=question, generated_at=generated_at)
     markdown = build_report_markdown(report)
     lines = _wrap_pdf_lines(_markdown_to_plain_text(markdown), width=88)
-    return _simple_text_pdf(lines, title="Ответ GraphRAG")
+    return _pillow_text_pdf(lines, title="Ответ GraphRAG")
 
 
 def format_status_badge(payload: dict[str, Any]) -> str:
@@ -1188,6 +1191,8 @@ def friendly_source_name(raw: Any, *, material: Any = None, source_url: Any = No
         return "Источник из корпуса"
     filename = raw_text.replace("\\", "/").rsplit("/", 1)[-1]
     filename = re.sub(r"^doc_[0-9a-fA-F]{8,64}_", "", filename)
+    if _looks_like_public_source_filename(filename):
+        return _shorten(filename, 90)
     stem = re.sub(r"\.[A-Za-z0-9]{1,8}$", "", filename)
     stem = INTERNAL_ID_RE.sub("", stem)
     normalized = _normalize_source_stem(stem)
@@ -1206,6 +1211,16 @@ def friendly_source_name(raw: Any, *, material: Any = None, source_url: Any = No
     if not meaningful_tokens:
         return "Источник из корпуса"
     return "Источник из корпуса"
+
+
+def _looks_like_public_source_filename(filename: str) -> bool:
+    text = str(filename or "").strip()
+    if not text or INTERNAL_ID_RE.search(text):
+        return False
+    lowered = text.lower()
+    if any(token in lowered for token in ["synthetic", "fixture", "smoke", "technical_name", "source_technical"]):
+        return False
+    return bool(re.search(r"[А-Яа-яЁё]", text) and re.search(r"\.(pdf|docx|pptx|xlsx|csv|txt|md|html?)$", text, flags=re.IGNORECASE))
 
 
 def _looks_like_url(value: str) -> bool:
@@ -1636,89 +1651,104 @@ def _wrap_pdf_lines(lines: list[str], *, width: int) -> list[str]:
     return wrapped
 
 
-def _simple_text_pdf(lines: list[str], *, title: str) -> bytes:
-    pages = [lines[idx: idx + 48] for idx in range(0, max(len(lines), 1), 48)] or [[]]
-    objects: list[bytes] = []
+PDF_FONT_CANDIDATES = [
+    str(Path(__file__).resolve().parent / "assets" / "fonts" / "NotoSans-Regular.ttf"),
+    "/code/hackathon_project/app/assets/fonts/NotoSans-Regular.ttf",
+    "/models/fonts/NotoSans-Regular.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+    "/usr/share/fonts/truetype/noto/noto_sans_regular.ttf",
+    "C:/Windows/Fonts/arial.ttf",
+    "C:/Windows/Fonts/calibri.ttf",
+]
 
-    def add_object(body: bytes) -> int:
-        objects.append(body)
-        return len(objects)
 
-    catalog_id = add_object(b"<< /Type /Catalog /Pages 2 0 R >>")
-    pages_id = add_object(b"<< /Type /Pages /Kids [] /Count 0 >>")
-    font_id = add_object(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>")
-    page_ids: list[int] = []
-    for page_lines in pages:
-        stream = _pdf_content_stream(page_lines)
-        content_id = add_object(b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n" + stream + b"\nendstream")
-        page_id = add_object(
-            (
-                f"<< /Type /Page /Parent {pages_id} 0 R /MediaBox [0 0 595 842] "
-                f"/Resources << /Font << /F1 {font_id} 0 R >> >> /Contents {content_id} 0 R >>"
-            ).encode("ascii")
-        )
-        page_ids.append(page_id)
-    objects[pages_id - 1] = (
-        f"<< /Type /Pages /Kids [{' '.join(f'{page_id} 0 R' for page_id in page_ids)}] /Count {len(page_ids)} >>"
-    ).encode("ascii")
-    original_text = "\n".join(_clean_public_text(line) for line in lines)
-    info_id = add_object(
-        f"<< /Title {_pdf_utf16_hex(title)} /Subject {_pdf_utf16_hex(original_text[:3000])} >>".encode("ascii")
+def _pillow_text_pdf(lines: list[str], *, title: str) -> bytes:
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+    except Exception as exc:  # pragma: no cover - exercised only when deployment deps are broken
+        raise RuntimeError("PDF export requires Pillow, which is already installed with Streamlit.") from exc
+
+    font_path = _find_pdf_font_path()
+    if not font_path:
+        raise RuntimeError("PDF export requires a bundled Cyrillic TTF font.")
+
+    page_width, page_height = 1240, 1754  # A4 at roughly 150 DPI.
+    margin_x, margin_y = 88, 76
+    body_font = ImageFont.truetype(font_path, 22)
+    title_font = ImageFont.truetype(font_path, 34)
+    heading_font = ImageFont.truetype(font_path, 27)
+    line_gap = 8
+    paragraph_gap = 14
+
+    pages: list[Any] = []
+    image = Image.new("RGB", (page_width, page_height), "white")
+    draw = ImageDraw.Draw(image)
+    y = margin_y
+
+    def new_page() -> None:
+        nonlocal image, draw, y
+        pages.append(image)
+        image = Image.new("RGB", (page_width, page_height), "white")
+        draw = ImageDraw.Draw(image)
+        y = margin_y
+
+    def draw_line(text: str, font: Any, *, gap: int = line_gap) -> None:
+        nonlocal y
+        if y > page_height - margin_y - 36:
+            new_page()
+        draw.text((margin_x, y), text, fill=(24, 24, 24), font=font)
+        bbox = draw.textbbox((margin_x, y), text or " ", font=font)
+        y += max(24, bbox[3] - bbox[1]) + gap
+
+    for raw_line in lines:
+        line = _clean_public_text(raw_line)
+        if not line:
+            y += paragraph_gap
+            if y > page_height - margin_y:
+                new_page()
+            continue
+        if line == title:
+            draw_line(line, title_font, gap=18)
+        elif line in {
+            "Вопрос",
+            "Краткий вывод",
+            "Что найдено",
+            "Подтвержденные факты",
+            "Найденные противоречия",
+            "Ограничения анализа",
+            "Использованные источники",
+            "Служебная информация",
+        }:
+            y += 6
+            draw_line(line, heading_font, gap=10)
+        else:
+            draw_line(line, body_font)
+
+    pages.append(image)
+    buffer = BytesIO()
+    first, rest = pages[0], pages[1:]
+    first.save(
+        buffer,
+        format="PDF",
+        save_all=True,
+        append_images=rest,
+        resolution=150.0,
+        title=title,
+        subject="\n".join(_clean_public_text(line) for line in lines[:120]),
     )
-
-    chunks = [b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n"]
-    offsets = [0]
-    for idx, body in enumerate(objects, start=1):
-        offsets.append(sum(len(chunk) for chunk in chunks))
-        chunks.append(f"{idx} 0 obj\n".encode("ascii") + body + b"\nendobj\n")
-    xref_offset = sum(len(chunk) for chunk in chunks)
-    chunks.append(f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode("ascii"))
-    for offset in offsets[1:]:
-        chunks.append(f"{offset:010d} 00000 n \n".encode("ascii"))
-    chunks.append(
-        (
-            f"trailer\n<< /Size {len(objects) + 1} /Root {catalog_id} 0 R /Info {info_id} 0 R >>\n"
-            f"startxref\n{xref_offset}\n%%EOF\n"
-        ).encode("ascii")
-    )
-    return b"".join(chunks)
+    return buffer.getvalue()
 
 
-def _pdf_content_stream(lines: list[str]) -> bytes:
-    commands = ["BT", "/F1 10 Tf", "50 800 Td", "13 TL"]
-    for line in lines:
-        commands.append(f"{_pdf_literal(_pdf_visible_text(line))} Tj")
-        commands.append("T*")
-    commands.append("ET")
-    return "\n".join(commands).encode("ascii")
-
-
-def _pdf_utf16_hex(value: str) -> str:
-    encoded = ("\ufeff" + _clean_public_text(value)).encode("utf-16-be")
-    return "<" + encoded.hex().upper() + ">"
-
-
-def _pdf_literal(value: str) -> str:
-    escaped = str(value or "").replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
-    return f"({escaped})"
-
-
-_CYRILLIC_TRANSLIT = str.maketrans(
-    {
-        "А": "A", "Б": "B", "В": "V", "Г": "G", "Д": "D", "Е": "E", "Ё": "E", "Ж": "Zh", "З": "Z",
-        "И": "I", "Й": "Y", "К": "K", "Л": "L", "М": "M", "Н": "N", "О": "O", "П": "P", "Р": "R",
-        "С": "S", "Т": "T", "У": "U", "Ф": "F", "Х": "Kh", "Ц": "Ts", "Ч": "Ch", "Ш": "Sh",
-        "Щ": "Sch", "Ъ": "", "Ы": "Y", "Ь": "", "Э": "E", "Ю": "Yu", "Я": "Ya",
-        "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e", "ж": "zh", "з": "z",
-        "и": "i", "й": "y", "к": "k", "л": "l", "м": "m", "н": "n", "о": "o", "п": "p", "р": "r",
-        "с": "s", "т": "t", "у": "u", "ф": "f", "х": "kh", "ц": "ts", "ч": "ch", "ш": "sh",
-        "щ": "sch", "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya",
-        "№": "No", "—": "-", "–": "-", "≈": "~", "·": "-", "…": "...",
-    }
-)
-
-
-def _pdf_visible_text(value: Any) -> str:
-    text = _clean_public_text(value).translate(_CYRILLIC_TRANSLIT)
-    text = text.replace("₽", "RUB")
-    return "".join(char if 32 <= ord(char) <= 126 else " " for char in text)
+def _find_pdf_font_path() -> str:
+    candidates: list[str] = []
+    env_path = os.getenv("PDF_FONT_PATH", "").strip()
+    if env_path:
+        candidates.append(env_path)
+    candidates.extend(PDF_FONT_CANDIDATES)
+    for candidate in candidates:
+        path = Path(candidate)
+        if path.is_file():
+            return str(path)
+    return ""
