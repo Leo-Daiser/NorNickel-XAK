@@ -1,5 +1,17 @@
 # SciKnot — Scientific GraphRAG для технических документов
 
+## English overview
+
+**SciKnot** is a team project built for the Nornickel AI Science Hack. It helps researchers navigate technical documents and inspect the sources behind extracted facts and generated answers.
+
+**Stack:** Python, FastAPI, Neo4j, BM25/hybrid retrieval, Streamlit, Docker; optional Yandex Cloud AI integration.
+
+**What it demonstrates:** document ingestion, structured fact extraction, knowledge-graph storage, retrieval, citation tracking and evidence-aware answer generation. The application distinguishes verified facts from less conclusive retrieved passages.
+
+This is a **hackathon prototype**, not a production-deployed knowledge system.
+
+## Installation and technical details (Russian)
+
 Проект для хакатона: система загружает научно-технические документы, извлекает проверяемые факты, строит граф знаний и отвечает на исследовательские вопросы с источниками, цитатами и аудитом происхождения ответа.
 
 Основной интерфейс — Streamlit UI. Backend — FastAPI. Граф — Neo4j. Поиск — BM25 / hybrid retrieval. LLM-провайдер можно подключить через Yandex Cloud AI.
